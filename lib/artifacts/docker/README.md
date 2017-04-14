@@ -24,6 +24,7 @@ root@921f974ee490:/# cat /etc/mayaserver/orchprovider/nomad_global.INI
 
 ## TODO
 
+- Check if ENV variables get overridden if specified in `docker run` command
 - Run m-apiserver up command without -bind option
 - Follow dockerfile best practices
 - Follow entrypoint best practices
