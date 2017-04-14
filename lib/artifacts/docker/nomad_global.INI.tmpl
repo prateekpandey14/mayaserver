@@ -1,0 +1,12 @@
+[datacenter "dc1"]
+; Address of Nomad deployment
+address = __NOMAD_ADDR__
+
+; Container Networking options
+cn-type = __CN_TYPE__
+cn-network-cidr = __CN_NETWORK_CIDR__
+cn-interface = __CN_INTERFACE__
+
+; Container Storage options
+cs-persistence-location = /tmp/
+cs-replica-count = 2
