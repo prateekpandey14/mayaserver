@@ -17,7 +17,7 @@ sudo docker inspect <Container-ID>
 curl http://<Container-IP>:5656/latest/meta-data/instance-id
 
 # run commands inside the container
-amit:docker$ sudo docker exec -it 921f974ee490 bash
+amit:docker$ sudo docker exec -it <Container-ID> bash
 root@921f974ee490:/# 
 root@921f974ee490:/# cat /etc/mayaserver/orchprovider/nomad_global.INI
 ```
