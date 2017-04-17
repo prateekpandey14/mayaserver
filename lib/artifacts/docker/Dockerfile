@@ -34,6 +34,13 @@ COPY nomad_global.INI.tmpl /etc/mayaserver/orchprovider/nomad_global.INI
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-ENTRYPOINT entrypoint.sh "${MAYA_API_SERVER_NETWORK}" "${NOMAD_ADDR}" "${NOMAD_CN_TYPE}" "${NOMAD_CN_NETWORK_CIDR}" "${NOMAD_CN_INTERFACE}" "${NOMAD_CS_PERSISTENCE_LOCATION}" "${NOMAD_CS_REPLICA_COUNT}"
+ENTRYPOINT entrypoint.sh \
+  "${MAYA_API_SERVER_NETWORK}" \
+  "${NOMAD_ADDR}" \
+  "${NOMAD_CN_TYPE}" \
+  "${NOMAD_CN_NETWORK_CIDR}" \
+  "${NOMAD_CN_INTERFACE}" \
+  "${NOMAD_CS_PERSISTENCE_LOCATION}" \
+  "${NOMAD_CS_REPLICA_COUNT}"
 
 EXPOSE 5656

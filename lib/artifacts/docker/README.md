@@ -16,15 +16,35 @@ sudo docker inspect <Container-ID>
 # verify the m-apiserver service within this container
 curl http://<Container-IP>:5656/latest/meta-data/instance-id
 
-# run commands inside the container
+# Verify INI file inside the container
 amit:docker$ sudo docker exec -it <Container-ID> bash
 root@921f974ee490:/# 
 root@921f974ee490:/# cat /etc/mayaserver/orchprovider/nomad_global.INI
 ```
 
+## To run the image with custom ENV values 
+
+Refer ../docker-compose/README.md
+
+## Cleaning up Docker Images & Containers
+
+> This might be required in your dev/test machine or your own laptop.
+
+```bash
+# Stop all Containers
+sudo docker stop $(sudo docker ps -a -q)
+
+# Remove all Containers & its Associated Volumes
+sudo docker rm -v $(sudo docker ps -a -q)
+
+# Remove all Images
+sudo docker rmi $(sudo docker images -q)
+```
+
 ## TODO
 
 - Check if ENV variables get overridden if specified in `docker run` command
+- Make maya api server's port configurable
 - Add sample K8s pod spec that deploys m-apiserver as a K8s pod.
 - Run m-apiserver up command without -bind option
 - Follow dockerfile best practices
