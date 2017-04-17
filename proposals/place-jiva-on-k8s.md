@@ -1,4 +1,4 @@
-# Enable RBAC support in Kubernetes
+# Place JIVA containers in Kubernetes
 
 Status: Proposal
 
