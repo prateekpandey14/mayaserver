@@ -1,3 +1,5 @@
+// This file provides maya api server's plugin related utilities w.r.t
+// orchestrator provider.
 package orchprovider
 
 import (
@@ -16,10 +18,22 @@ import (
 // plugin can be initialized at runtime when the parameters are available or
 // can be provided.
 //
-// `name` parameter signifies the name of the orchestrator plugin
+// `name` parameter signifies the name of the orchestrator plugin.
+//
+// `region` parameter signifies the name of the region where the orchestrator
+// is currently operating.
 //
 // `config` parameter provides an io.Reader handler in order to load specific
 // configurations. If no configuration is provided the parameter is nil.
+//
+// TODO
+// name should be the only parameter that will be provided.
+// Address, Region, dc & other config options should be provided/derived during
+// volume provisioning.
+//
+// e.g. orchprofiles, volumeprofiles, etc packages may be required
+// Aim will be to remove the config file completely. This will also remove the
+// need to create multiple instances of specific orchestrators i.e. variants.
 type OrchFactory func(name string, region string, config io.Reader) (OrchestratorInterface, error)
 
 // All registered orchestration providers.

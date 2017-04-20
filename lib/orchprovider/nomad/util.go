@@ -49,6 +49,12 @@ const (
 // ; Container Storage options
 // cs-persistence-location = /tmp/
 // cs-replica-count = 2
+//
+// TODO
+// It is planned to remove this Config entirely. The values present here
+// are mostly dynamic in nature & will differ from request to request.
+// It might be well to label these under orch provider profile(s) stored in some
+// DB &/ generated at runtime.
 type NomadConfig struct {
 	Datacenter map[string]*struct {
 		// Address of Nomad cluster
@@ -90,10 +96,18 @@ type NomadUtilInterface interface {
 
 	// This is a builder for NomadNetworks interface. Will return
 	// false if not supported.
+	//
+	// TODO
+	// This interface will not be required once maya api server implements
+	// orchestrator provider specific profiles.
 	NomadNetworks() (NomadNetworks, bool)
 
 	// This is a builder for NomadStorages interface. Will return
 	// false if not supported.
+	//
+	// TODO
+	// This interface will not be required once maya api server implements
+	// orchestrator provider specific profiles.
 	NomadStorages() (NomadStorages, bool)
 }
 

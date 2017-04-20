@@ -1,7 +1,7 @@
-// This file acts a plug to below resources:
+// This file plugs the following:
 //
-//    1. Mayaserver's orchprovider interface &
-//    2. Hashicorp Nomad
+//    1. Generic orchprovider &
+//    2. Nomad orchprovider
 package nomad
 
 import (
@@ -14,23 +14,27 @@ import (
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
-// Name of this orchestration provider.
-//const NomadOrchProviderName = "nomad"
-
-// The registration logic for jiva orchestrator plugin
+// The registration logic for the default nomad orchestrator plugin
 //
 // NOTE:
-//    This is invoked at startup.
+//    This function is executed once per application
 //
 // NOTE:
-//    Registration & Initialization are two different workflows. Both are
-// mapped by orchestrator plugin name.
+//    Registration & Initialization are two different workflows.
+//  Registration happens here while Initialization is a lazy logic that happens
+//  at runtime with appropriate values.
 func init() {
 	orchprovider.RegisterOrchProvider(
 		// A variant of nomad orchestrator plugin
 		v1nomad.DefaultNomadPluginName,
 		// Below is a functional implementation that holds the initialization
 		// logic of nomad orchestrator plugin
+		//
+		// TODO
+		// The region, config options should not be used as they are meant to be
+		// dynamic. They should be available as profiles. Once that happens, any
+		// instance of nomad orchestrator should do these jobs. Hence, variants will
+		// no longer be required.
 		func(name string, region string, config io.Reader) (orchprovider.OrchestratorInterface, error) {
 			return NewNomadOrchestrator(name, region, config)
 		})
@@ -39,8 +43,9 @@ func init() {
 // NomadOrchestrator is a concrete representation of following
 // interfaces:
 //
-//  1. orchprovider.OrchestratorInterface &
-//  2. orchprovider.StoragePlacements
+//  1. orchprovider.OrchestratorInterface,
+//  2. orchprovider.NetworkPlacements, &
+//  3. orchprovider.StoragePlacements
 type NomadOrchestrator struct {
 
 	// Name of this orchestrator
@@ -138,6 +143,10 @@ func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements,
 
 // NetworkPlacements is this orchestration provider's
 // implementation of the orchprovider.OrchestratorInterface interface.
+//
+// TODO
+// This implementation will not be required once maya api server implements
+// orchestrator provider specific profiles.
 func (n *NomadOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, bool) {
 
 	return n, true
@@ -154,6 +163,10 @@ func (n *NomadOrchestrator) NetworkPropsReq(dc string) (map[v1.ContainerNetworki
 // StoragePropsReq is a contract method implementation of
 // orchprovider.StoragePlacements interface. In this implementation,
 // persistent storage details will be fetched from a Nomad deployment.
+//
+// TODO
+// This implementation will not be required once maya api server implements
+// orchestrator provider specific profiles.
 func (n *NomadOrchestrator) StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error) {
 
 	return n.nStorApis.StorageProps(dc)

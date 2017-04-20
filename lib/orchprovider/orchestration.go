@@ -1,3 +1,6 @@
+// This file defines interfaces that determines an orchestrator w.r.t maya api
+// server. All the features that maya api server wants from an orchestrator is
+// defined in these set of interfaces.
 package orchprovider
 
 import (
@@ -5,28 +8,34 @@ import (
 )
 
 // OrchestrationInterface is an interface abstraction of a real orchestrator.
-// It represents a pluggable mechanism for any orchestration
-// provider to invoke operations on the infrastructure managed by an
+// It represents an abstraction that maya api server expects from its
 // orchestrator.
+//
+// NOTE:
+//  OrchestratorInterface is an aggregator of specific interfaces.
 type OrchestratorInterface interface {
 
-	// Name of the orchestration provider
+	// Name of the orchestration provider i.e. orchestrator
 	Name() string
 
 	// Region where this orchestrator is running/deployed
 	Region() string
 
-	// This is a builder for NetworkPlacements interface. Will return
+	// NetworkPlacements gets the NetworkPlacements related features. Will return
 	// false if not supported.
 	NetworkPlacements() (NetworkPlacements, bool)
 
-	// This is a builder for StoragePlacements interface. Will return
+	// StoragePlacements gets the StoragePlacements related features. Will return
 	// false if not supported.
 	StoragePlacements() (StoragePlacements, bool)
 }
 
-// NetworkPlacements provides the blueprint for network related
-// placements, scheduling, etc at the orchestrator end.
+// NetworkPlacements provides the interface abstraction for network related
+// placements, scheduling, etc that are available at the orchestrator.
+//
+// TODO
+// This interface will not be required once maya api server implements orchestrator
+// provider specific profiles.
 type NetworkPlacements interface {
 
 	// NetworkPropsReq will try to fetch the networking details at the orchestrator
@@ -71,5 +80,9 @@ type StoragePlacements interface {
 	//    jiva requires these persistent storage properties to provision
 	// its instances e.g. backing persistence location is required on which
 	// a jiva replica can operate.
+	//
+	// TODO
+	// This function will not be required once maya api server implements orchestrator
+	// provider specific profiles.
 	StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error)
 }
