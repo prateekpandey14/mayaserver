@@ -13,16 +13,16 @@ import (
 //    maya api server can make use of any persistent volume provisioner & execute
 // corresponding volume related operations.
 type VolumeInterface interface {
-  // Name of the persistent volume provisioner
+	// Name of the persistent volume provisioner
 	Name() string
 
 	// Provisioner gets the instance capable of provisioning volumes w.r.t this
-	// persistent volume provisioner. Will return false if provisioning of volumes 
+	// persistent volume provisioner. Will return false if provisioning of volumes
 	// is not supported by this provisioner.
 	Provisioner() (Provisioner, bool)
 
 	// Deleter gets the instance capable of deleting volumes w.r.t this
-	// persistent volume provisioner. Will return false if deletion of volumes is 
+	// persistent volume provisioner. Will return false if deletion of volumes is
 	// not supported by this provisioner.
 	Deleter() (Deleter, bool)
 
@@ -32,7 +32,7 @@ type VolumeInterface interface {
 	Informer() (Informer, bool)
 }
 
-// Informer interface abstracts fetching of volume related information 
+// Informer interface abstracts fetching of volume related information
 // from a persistent volume provisioner.
 type Informer interface {
 	// Info tries to fetch the volume details from the persistent volume
@@ -47,7 +47,7 @@ type Provisioner interface {
 	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 }
 
-// Deleter interface abstracts deletion of volume of a persistent volume 
+// Deleter interface abstracts deletion of volume of a persistent volume
 // provisioner.
 type Deleter interface {
 	// Delete tries to delete a volume of a persistent volume provisioner.

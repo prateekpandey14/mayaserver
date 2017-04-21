@@ -18,11 +18,23 @@ const (
 	CSReplicaCountLbl        ContainerStorageLbl = "cs.openebs.io/replica-count"
 )
 
+// TODO
+//    Need to standardize on the label's value.
 type RequestsLbl string
 
 const (
+	// Old way to labels
 	RegionLbl     RequestsLbl = "requests.openebs.io/region"
 	DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
+
+	// Current Label Standards
+	// NOTE: Need not go with the versioning as we are at 0.2+ releases.
+	//    Try to provide two Lbl variable names.
+	OrchProviderNameLbl      RequestsLbl = "orchprovider.mapiserver.openebs.io/name"
+	VolumeProvisionerNameLbl RequestsLbl = "volumeprovisioner.mapiserver.openebs.io/name"
+
+	PVPersistenceLocationLbl ContainerStorageLbl = "persistentvolume.mapiserver.openebs.io/persistence-location"
+	PVReplicaCountLbl        ContainerStorageLbl = "persistentvolume.mapiserver.openebs.io/replica-count"
 )
 
 const (

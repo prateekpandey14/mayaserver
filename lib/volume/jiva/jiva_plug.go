@@ -24,7 +24,7 @@ import (
 //
 // TODO
 //  A simplified version of registration logic will be implemented. This in turn
-// will enable the registry to create new instances of jiva persistent volume 
+// will enable the registry to create new instances of jiva persistent volume
 // provisioner on each request.
 func init() {
 	volume.RegisterVolumePlugin(

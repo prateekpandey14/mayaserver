@@ -12,10 +12,10 @@ import (
 )
 
 // VolumeFactory is a signature function that each persistent volume provisioner
-// plugin implementor needs to implement. It should contain the initialization 
-// logic specific to the persistent volume provisioner plugin. This function 
+// plugin implementor needs to implement. It should contain the initialization
+// logic specific to the persistent volume provisioner plugin. This function
 // signature i.e. functional type enables lazy initialization of persistent volume
-// provisioner plugin. In other words, a persistent volume provisioner plugin can 
+// provisioner plugin. In other words, a persistent volume provisioner plugin can
 // be initialized at runtime when the parameters are available or can be provided.
 //
 // `name` parameter signifies the name of the volume plugin
@@ -28,12 +28,12 @@ import (
 //
 // TODO
 //    It might be good to remove the concept of a config & aspect from initialization.
-// It has been found that these values are dynamic and differ from one request to 
-// another request. 
+// It has been found that these values are dynamic and differ from one request to
+// another request.
 //
 // NOTE:
-//    This also leads to removal of plugin registry concept. In other words, a 
-// request would create its own instance of persistent volume provisioner, set 
+//    This also leads to removal of plugin registry concept. In other words, a
+// request would create its own instance of persistent volume provisioner, set
 // this instance with appropriate profiles & make use of it. The lifecycle of this
 // instance will be tied to the lifecycle of the request.
 //
@@ -44,8 +44,8 @@ import (
 //    Simplify the registration logic to provide a persistent volume provisioner
 // plugin instance based on the name of the volume provisioner plugin. In addition,
 // each of the persistent volume provisioner plugin should fill this registry with
-// its respective instance creation function. Each call to this registry will lead 
-// to creation & return of a newly created persistent volume provisioner plugin 
+// its respective instance creation function. Each call to this registry will lead
+// to creation & return of a newly created persistent volume provisioner plugin
 // instance
 type VolumeFactory func(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
 
@@ -54,7 +54,7 @@ type VolumeFactory func(name string, config io.Reader, aspect VolumePluginAspect
 type VolumePluginAspect interface {
 
 	// Get the suitable orchestration provider.
-	// A persistent volume provisioner plugin may be linked with a orchestrator 
+	// A persistent volume provisioner plugin may be linked with a orchestrator
 	// e.g. K8s, Nomad, Mesos, Swarm, etc. It can be vanilla Docker engine as well.
 	//
 	// Note:
@@ -74,7 +74,7 @@ type VolumePluginAspect interface {
 	//
 	// TODO
 	// This contract method will be removed once persistent volume provisioner &
-	// orchestration provider specific profiles are introduced. These profiles &/ 
+	// orchestration provider specific profiles are introduced. These profiles &/
 	// operator provided runtime values will be set in the requests.
 	DefaultDatacenter() (string, error)
 }
@@ -83,7 +83,7 @@ type VolumePluginAspect interface {
 var (
 	volumePluginsMutex sync.Mutex
 
-	// Persistent volume provisioner plugin name mapped against the plugin's 
+	// Persistent volume provisioner plugin name mapped against the plugin's
 	// initializer function.
 	volumePluginRegistry = make(map[string]VolumeFactory)
 
@@ -117,7 +117,7 @@ var (
 // strings in OtherAttributes.
 //
 // TODO
-//    This will not be required once the simplified registration logic is in 
+//    This will not be required once the simplified registration logic is in
 // place along with persistent volume provisioner profiles.
 type VolumePluginConfig struct {
 

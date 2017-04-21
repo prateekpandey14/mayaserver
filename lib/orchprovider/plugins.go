@@ -1,5 +1,8 @@
 // This file provides maya api server's plugin related utilities w.r.t
 // orchestrator provider.
+//
+// NOTE:
+//  This file is `deprecated`. Use registry.go for simplified registration.
 package orchprovider
 
 import (
