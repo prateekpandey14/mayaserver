@@ -1,9 +1,4 @@
-// This file exposes volume plugin related contracts.
-// Hence, any specific volume plugin implementor will
-// implement the logic that aligns to the contracts
-// exposed here.
-// Some of the plugin based interfaces delegate to
-// volume based interfaces to do the actual work.
+// This file provides persistent volume provisioner plugin's registry features.
 package volume
 
 import (
@@ -13,16 +8,15 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	//"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
-// VolumeFactory is signature function that every volume plugin implementor
-// needs to implement. It should contain the initialization logic w.r.t a
-// volume plugin. This function signature i.e. functional type has been created
-// to enable lazy initialization of volume plugin. In other words, a volume
-// plugin can be initialized at runtime when the parameters are available or
-// can be provided.
+// VolumeFactory is a signature function that each persistent volume provisioner
+// plugin implementor needs to implement. It should contain the initialization 
+// logic specific to the persistent volume provisioner plugin. This function 
+// signature i.e. functional type enables lazy initialization of persistent volume
+// provisioner plugin. In other words, a persistent volume provisioner plugin can 
+// be initialized at runtime when the parameters are available or can be provided.
 //
 // `name` parameter signifies the name of the volume plugin
 //
@@ -30,19 +24,38 @@ import (
 // configurations. If no configuration is provided the parameter is nil.
 //
 // `aspect` parameter provides handles to various orthogonal aspects of the
-// volume plugin. e.g.
-//  1. aspect provides the region based orchestrator associated with the volume plugin.
-//  2. aspect can be used to target the default datacenter of above orchestrator.
+// volume plugin.
+//
+// TODO
+//    It might be good to remove the concept of a config & aspect from initialization.
+// It has been found that these values are dynamic and differ from one request to 
+// another request. 
+//
+// NOTE:
+//    This also leads to removal of plugin registry concept. In other words, a 
+// request would create its own instance of persistent volume provisioner, set 
+// this instance with appropriate profiles & make use of it. The lifecycle of this
+// instance will be tied to the lifecycle of the request.
+//
+// NOTE:
+//    This also indicates the removal of registration & initialization logic.
+//
+// TODO
+//    Simplify the registration logic to provide a persistent volume provisioner
+// plugin instance based on the name of the volume provisioner plugin. In addition,
+// each of the persistent volume provisioner plugin should fill this registry with
+// its respective instance creation function. Each call to this registry will lead 
+// to creation & return of a newly created persistent volume provisioner plugin 
+// instance
 type VolumeFactory func(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
 
-// VolumePluginAspect is an interface that provides a blueprint for plugins
-// to cater to the needs when a plugin requires the help of a third party
-// resource (library, provider, etc) to materialize a requirement.
+// VolumePluginAspect interface abstracts persistent volume provisioner plugin's
+// orthogonal requirements.
 type VolumePluginAspect interface {
 
 	// Get the suitable orchestration provider.
-	// A volume plugin may be linked with its provider e.g.
-	// an orchestration provider like K8s, Nomad, Mesos, etc.
+	// A persistent volume provisioner plugin may be linked with a orchestrator 
+	// e.g. K8s, Nomad, Mesos, Swarm, etc. It can be vanilla Docker engine as well.
 	//
 	// Note:
 	//    OpenEBS believes in running storage software in containers & hence
@@ -58,19 +71,23 @@ type VolumePluginAspect interface {
 	//
 	// NOTE:
 	//  This will be used only if user action request does not specify a datacenter
+	//
+	// TODO
+	// This contract method will be removed once persistent volume provisioner &
+	// orchestration provider specific profiles are introduced. These profiles &/ 
+	// operator provided runtime values will be set in the requests.
 	DefaultDatacenter() (string, error)
 }
 
-// All registered volume plugins.
+// All registered persistent volume provisioner plugins.
 var (
 	volumePluginsMutex sync.Mutex
 
-	// A mapped instance of volume plugin name with the plugin's
+	// Persistent volume provisioner plugin name mapped against the plugin's 
 	// initializer function.
 	volumePluginRegistry = make(map[string]VolumeFactory)
 
-	// A mapped instance of volume plugin name with the actual
-	// plugin instance.
+	// Persistent volume provisioner plugin name with the actual plugin instance.
 	//
 	// Acts as a cache.
 	volumePluginInstances = make(map[string]VolumeInterface)
@@ -98,6 +115,10 @@ var (
 // used for truly one-off configuration. The binary should still use strong
 // typing for this value when binding CLI values before they are passed as
 // strings in OtherAttributes.
+//
+// TODO
+//    This will not be required once the simplified registration logic is in 
+// place along with persistent volume provisioner profiles.
 type VolumePluginConfig struct {
 
 	// OtherAttributes stores config as strings.  These strings are opaque to
@@ -108,17 +129,6 @@ type VolumePluginConfig struct {
 
 // RegisterVolumePlugin registers a volume.VolumeInterface by name.
 // This is just a registry entry.
-//
-// NOTE:
-// Registration & Initialization are two different workflows.
-//
-// VolumeFactory instance represents the initialization logic. This is
-// executed lazily. The initialization logic accepts various parameters
-// like:
-//
-//  1. volume plugin name,
-//  2. volume plugin config file,
-//  3. volume aspect instance
 //
 // NOTE:
 //    Each implementation of volume plugin need to call

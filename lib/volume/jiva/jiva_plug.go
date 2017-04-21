@@ -21,6 +21,11 @@ import (
 // NOTE:
 //    Registration & Initialization are two different workflows. Both are
 // mapped by volume plugin name.
+//
+// TODO
+//  A simplified version of registration logic will be implemented. This in turn
+// will enable the registry to create new instances of jiva persistent volume 
+// provisioner on each request.
 func init() {
 	volume.RegisterVolumePlugin(
 		// A variant of jiva volume plugin
