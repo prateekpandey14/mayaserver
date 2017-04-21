@@ -13,17 +13,17 @@ import (
 	"github.com/openebs/mayaserver/lib/orchprovider"
 )
 
-// The registration logic for the kubernetes as orchestrator prvoider plugin
+// The registration logic for the kubernetes as orchestrator provider plugin
 //
 // NOTE:
 //    This function is executed once per application
 func init() {
 	orchprovider.RegisterOrchestrator(
 		// Name when kubernetes is the orchestrator provider plugin
-		v1k8s.K8sOrchProviderPluginName,
+		v1k8s.K8sOrchestrationProviderName,
 
 		// Below is a callback function that creates a new instance of k8s orchestrator
-		// provider plugin
+		// provider
 		func(name string) (orchprovider.OrchestratorInterface, error) {
 			return NewK8sOrchestrator(name)
 		})
