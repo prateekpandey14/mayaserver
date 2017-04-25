@@ -1,4 +1,5 @@
-// This file provides persistent volume provisioner plugin's registry features.
+// This file provides persistent volume provisioner plugin's registration &/ registry
+// features.
 package volume
 
 import (
@@ -49,6 +50,9 @@ import (
 // instance
 type VolumeFactory func(name string, config io.Reader, aspect VolumePluginAspect) (VolumeInterface, error)
 
+// TODO
+// This may not be required once Persistent Volume Provisioner Profile is implemented.
+//
 // VolumePluginAspect interface abstracts persistent volume provisioner plugin's
 // orthogonal requirements.
 type VolumePluginAspect interface {

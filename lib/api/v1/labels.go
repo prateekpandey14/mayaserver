@@ -24,6 +24,8 @@ type RequestsLbl string
 
 const (
 	// Old way to labels
+	// TODO
+	// Deprecate
 	RegionLbl     RequestsLbl = "requests.openebs.io/region"
 	DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
 

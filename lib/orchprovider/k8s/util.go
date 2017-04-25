@@ -1,8 +1,10 @@
 package k8s
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"fmt"
+
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
 )
 
@@ -75,8 +77,8 @@ func (k *k8sUtil) Http() error {
 		panic(err.Error())
 	}
 
-  // This is a sample code to register the vendored dependencies due to k8s client-go
-	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+	// This is a sample code to register the vendored dependencies due to k8s client-go
+	pods, err := clientset.CoreV1().Pods("").List(v1.ListOptions{})
 	if err != nil {
 		panic(err.Error())
 	}

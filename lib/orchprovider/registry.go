@@ -49,5 +49,6 @@ func GetOrchestrator(name string) (OrchestratorInterface, error) {
 		return nil, fmt.Errorf("'%s' is not registered as an orchestration provider", name)
 	}
 
+	// Orchestration provider's instance creating function is invoked here
 	return oInstFactory(name)
 }

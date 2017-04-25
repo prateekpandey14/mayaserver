@@ -1,5 +1,4 @@
-// This file provides the necessary implementation to establish jiva
-// as a mayaserver volume plugin.
+// This file registers jiva as maya api server's persistent volume provisioner plugin.
 package jiva
 
 import (
@@ -13,20 +12,19 @@ import (
 	"github.com/openebs/mayaserver/lib/volume"
 )
 
-// The registration logic for jiva storage volume plugin
+// The registration logic for jiva persistent volume provisioner plugin
 //
 // NOTE:
-//    This is invoked at startup.
-//
-// NOTE:
-//    Registration & Initialization are two different workflows. Both are
-// mapped by volume plugin name.
+//    This function is executed once per application
 //
 // TODO
 //  A simplified version of registration logic will be implemented. This in turn
 // will enable the registry to create new instances of jiva persistent volume
 // provisioner on each request.
 func init() {
+	// TODO
+	// Remove the deprecated registration style
+	// Deprecated registration style !!
 	volume.RegisterVolumePlugin(
 		// A variant of jiva volume plugin
 		v1jiva.DefaultJivaVolumePluginName,
@@ -35,8 +33,23 @@ func init() {
 		func(name string, config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
 			return newJivaStor(name, config, aspect)
 		})
+
+	// Current/New registration style !!
+	volume.RegisterVolumeProvisioner(
+		// Name when jiva is the persistent volume provisioner plugin
+		v1jiva.JivaVolumeProvisionerName,
+
+		// Below is a callback function that creates a new instance of jiva as persistent
+		// volume provisioner plugin
+		func(name string) (volume.VolumeInterface, error) {
+			return newJivaProvisioner(name)
+		})
 }
 
+// TODO
+// This will not be required once Persistent Volume Provisioner profile is
+// implemented.
+//
 // JivaStorNomadAspect is a concrete implementation of following interface:
 //
 //  1. volume.VolumePluginAspect interface
@@ -65,6 +78,9 @@ func (jAspect *JivaStorNomadAspect) DefaultDatacenter() (string, error) {
 	return jAspect.Datacenter, nil
 }
 
+// TODO
+// Rename to jivaProvisioner ??
+//
 // jivaStor is the concrete implementation that implements
 // following interfaces:
 //
@@ -76,6 +92,14 @@ type jivaStor struct {
 	// name is the name of this jiva volume plugin.
 	name string
 
+	// jivaProUtil is the instance that does all the low level jiva persistent
+	// volume provisioner works.
+	jivaProUtil JivaInterface
+
+	// TODO
+	// Deprecate
+	// Will be removed & jivaProUtil will be used instead.
+	//
 	// jStorOps abstracts the storage operations of this jivaStor
 	// instance
 	jStorOps StorageOps
@@ -86,6 +110,10 @@ type jivaStor struct {
 	//jConfig *JivaConfig
 }
 
+// TODO
+// Deprecate
+// Remove this deprecated function in favour of newJivaProvisioner
+//
 // newJivaStor provides a new instance of jivaStor.
 //
 // This function aligns with VolumePluginFactory function type.
@@ -123,6 +151,29 @@ func newJivaStor(name string, config io.Reader, aspect volume.VolumePluginAspect
 	return jivaStor, nil
 }
 
+// newJivaProvisioner generates a new instance of jiva based persistent volume
+// provisioner plugin.
+//
+// Note:
+//    This function aligns with the callback function signature
+func newJivaProvisioner(name string) (volume.VolumeInterface, error) {
+
+	glog.Infof("Building new instance of jiva persistent volume provisioner '%s'", name)
+
+	jUtil, err := newJivaProUtil()
+	if err != nil {
+		return nil, err
+	}
+
+	// build the provisioner instance
+	jivaStor := &jivaStor{
+		name:        name,
+		jivaProUtil: jUtil,
+	}
+
+	return jivaStor, nil
+}
+
 // Name returns the namespaced name of this volume
 //
 // NOTE:
@@ -131,6 +182,15 @@ func (j *jivaStor) Name() string {
 	return j.name
 }
 
+// Profile sets the persistent volume provisioner profile against this jiva volume
+// provisioner.
+func (j *jivaStor) Profile(volProProfile volume.VolumeProvisionerProfile) (bool, error) {
+	return j.jivaProUtil.JivaProProfile(volProProfile)
+}
+
+// TODO
+// Rename to Reader ??
+//
 // Informer provides a instance of volume.Informer interface.
 // Since jivaStor implements volume.Informer, it returns self.
 //
@@ -140,6 +200,9 @@ func (j *jivaStor) Informer() (volume.Informer, bool) {
 	return j, true
 }
 
+// TODO
+// Rename to Creator ??
+//
 // Provisioner provides a instance of volume.Provisioner interace
 // Since jivaStor implements volume.Provisioner, it returns self.
 //
@@ -158,6 +221,9 @@ func (j *jivaStor) Deleter() (volume.Deleter, bool) {
 	return j, true
 }
 
+// TODO
+// Rename to Read ??
+//
 // Info provides information on a jiva volume
 //
 // NOTE:
@@ -170,6 +236,9 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 	return j.jStorOps.StorageInfo(pvc)
 }
 
+// TODO
+// Rename to Create ??
+//
 // Provision provisions a jiva volume
 //
 // NOTE:

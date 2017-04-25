@@ -1,7 +1,6 @@
-// This file plugs the following:
-//
-//    1. Generic orchprovider defined by maya api server &
-//    2. Kubernetes as the orchestration provider
+// This file registers Kubernetes as an orchestration provider plugin in maya
+// api server. This orchestration is for persistent volume provisioners which
+// also are registered in maya api server.
 package k8s
 
 import (

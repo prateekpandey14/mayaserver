@@ -24,6 +24,12 @@ type JivaInterface interface {
 	// Name provides the name of the JivaInterface implementor
 	Name() string
 
+	// JivaProProfile sets an instance of VolumeProvisionerProfile.
+	//
+	// Note:
+	//    It may return false in its second return argument if not supported
+	JivaProProfile(volume.VolumeProvisionerProfile) (bool, error)
+
 	// This is a builder method for NetworkOps. It will return false
 	// if Network operations is not supported.
 	NetworkOps() (NetworkOps, bool)
@@ -35,6 +41,9 @@ type JivaInterface interface {
 
 type NetworkOps interface {
 
+	// TODO
+	// Remove this once Persistent Volume Provisioner profiles come into picture
+	//
 	// NetworkProps does not fall under CRUD operations. This is applicable
 	// to fetching properties from a config, or database etc.
 	//
@@ -47,12 +56,20 @@ type NetworkOps interface {
 type StorageOps interface {
 
 	// CRUD operations
+	// Info / Read operation
 	StorageInfo(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
+	// Add operation
+	// TODO
+	// Rename to AddStorage ??
 	ProvisionStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
+	// Delete operation
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
 
+	// TODO
+	// Remove this once Persistent Volume Provisioner profiles come into picture
+	//
 	// StorageProps does not fall under CRUD operations. This is applicable
 	// to fetching properties from a config, or database etc.
 	//
@@ -76,8 +93,15 @@ type jivaUtil struct {
 	// Orthogonal concerns and their management w.r.t jiva storage
 	// is done via aspect
 	aspect volume.VolumePluginAspect
+
+	// jivaProProfile holds persistent volume provisioner's profile properties
+	// This can be set lazily.
+	jivaProProfile volume.VolumeProvisionerProfile
 }
 
+// TODO
+// Deprecate in favour of newJivaProUtil
+//
 // newJivaUtil provides a orchestrator based infrastructure that
 // supports jiva operations
 func newJivaUtil(aspect volume.VolumePluginAspect) (JivaInterface, error) {
@@ -90,9 +114,31 @@ func newJivaUtil(aspect volume.VolumePluginAspect) (JivaInterface, error) {
 	}, nil
 }
 
-// This is a plain jiva utility implementation. Hence the name.
+// newJivaProUtil provides a new instance of JivaInterface that can execute jiva
+// persistent volume provisioner's low level tasks.
+func newJivaProUtil() (JivaInterface, error) {
+	return &jivaUtil{}, nil
+}
+
+// Name provides the name assigned to this instance of JivaInterface
+//
+// Note:
+//    There can be multiple instances (due to unique requests) which will have
+// this provided name. Name is not required to be unique.
 func (j *jivaUtil) Name() string {
-	return "jivautil"
+	return "JivaProvisionerUtil"
+}
+
+// JivaProProfile sets the persistent volume provisioner's profile. This returns
+// true as its first argument as jiva supports volume provisioner profile.
+func (j *jivaUtil) JivaProProfile(volProProfile volume.VolumeProvisionerProfile) (bool, error) {
+
+	if volProProfile == nil {
+		return true, fmt.Errorf("Nil persistent volume provisioner profile was provided to '%s'", j.Name())
+	}
+
+	j.jivaProProfile = volProProfile
+	return true, nil
 }
 
 // StorageOps method provides an instance of StorageOps interface
