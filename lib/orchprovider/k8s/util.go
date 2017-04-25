@@ -1,5 +1,11 @@
 package k8s
 
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+)
+
 // K8sUtilInterface is an abstraction over communicating with K8s APIs
 type K8sUtilInterface interface {
 	// Name of K8s utility
@@ -56,5 +62,25 @@ func (k *k8sUtil) K8sClients() (K8sClients, bool) {
 // Http is used to initialize and return a new http client capable
 // of invoking K8s APIs.
 func (k *k8sUtil) Http() error {
+
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// creates the clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+  // This is a sample code to register the vendored dependencies due to k8s client-go
+	pods, err := clientset.CoreV1().Pods("").List(metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+
 	return nil
 }
