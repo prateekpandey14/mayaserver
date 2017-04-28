@@ -5,6 +5,7 @@ package orchprovider
 
 import (
 	"github.com/openebs/mayaserver/lib/api/v1"
+	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 )
 
 // OrchestrationInterface is an interface abstraction of a real orchestrator.
@@ -14,20 +15,32 @@ import (
 // NOTE:
 //  OrchestratorInterface is an aggregator of specific interfaces.
 type OrchestratorInterface interface {
+	// Label assigned against the orchestration provider
+	Label() string
 
-	// Name of the orchestration provider i.e. orchestrator
+	// Name of the orchestration provider
 	Name() string
 
-	// Region where this orchestrator is running/deployed
+	// Region where this orchestration provider is running/deployed
 	Region() string
 
+	// TODO
+	// Deprecate once orchestrator profiles are ready
+	//
 	// NetworkPlacements gets the NetworkPlacements related features. Will return
 	// false if not supported.
 	NetworkPlacements() (NetworkPlacements, bool)
 
+	// TODO
+	// Deprecate in favour of StorageOps
+	//
 	// StoragePlacements gets the StoragePlacements related features. Will return
 	// false if not supported.
 	StoragePlacements() (StoragePlacements, bool)
+
+	// StorageOps gets the instance that deals with storage related operations.
+	// Will return false if not supported.
+	StorageOps() (StorageOps, bool)
 }
 
 // NetworkPlacements provides the interface abstraction for network related
@@ -50,6 +63,9 @@ type NetworkPlacements interface {
 	NetworkPropsReq(dc string) (map[v1.ContainerNetworkingLbl]string, error)
 }
 
+// TODO
+// Deprecate in favour of StorageOps
+//
 // StoragePlacement provides the blueprint for storage related
 // placements, scheduling, etc at the orchestrator end.
 type StoragePlacements interface {
@@ -85,4 +101,19 @@ type StoragePlacements interface {
 	// This function will not be required once maya api server implements orchestrator
 	// provider specific profiles.
 	StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error)
+}
+
+// StorageOps exposes various storage related operations that deals with
+// storage placements, scheduling, etc. The low level work is done by the
+// orchestrator.
+type StorageOps interface {
+
+	// AddStorage will add persistent volume running as containers
+	AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+
+	// DeleteStorage will remove the persistent volume
+	DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+
+	// ReadStorage will fetch information about the persistent volume
+	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
 }

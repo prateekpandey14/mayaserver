@@ -1,5 +1,8 @@
 // This file provides persistent volume provisioner plugin's registration &/ registry
 // features.
+//
+// TODO
+// Deprecate in favour of volume/registry.go
 package volume
 
 import (

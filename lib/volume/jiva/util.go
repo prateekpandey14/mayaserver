@@ -15,6 +15,8 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	"github.com/openebs/mayaserver/lib/nethelper"
+	"github.com/openebs/mayaserver/lib/orchprovider"
+	vProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"github.com/openebs/mayaserver/lib/volume"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -28,7 +30,7 @@ type JivaInterface interface {
 	//
 	// Note:
 	//    It may return false in its second return argument if not supported
-	JivaProProfile(volume.VolumeProvisionerProfile) (bool, error)
+	JivaProProfile(vProfile.VolumeProvisionerProfile) (bool, error)
 
 	// This is a builder method for NetworkOps. It will return false
 	// if Network operations is not supported.
@@ -39,6 +41,8 @@ type JivaInterface interface {
 	StorageOps() (StorageOps, bool)
 }
 
+// NetworkOps abstracts the network specific operations of jiva persistent
+// volume provisioner.
 type NetworkOps interface {
 
 	// TODO
@@ -53,16 +57,24 @@ type NetworkOps interface {
 	NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string, error)
 }
 
+// StorageOps abstracts the storage specific operations of jiva persistent
+// volume provisioner.
 type StorageOps interface {
 
 	// CRUD operations
 	// Info / Read operation
+	// TODO
+	// Deprecate in favour of ReadStorage
 	StorageInfo(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+
+	ReadStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
 	// Add operation
 	// TODO
-	// Rename to AddStorage ??
+	// Deprecate in favour of AddStorage
 	ProvisionStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+
+	AddStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
 	// Delete operation
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
@@ -94,9 +106,9 @@ type jivaUtil struct {
 	// is done via aspect
 	aspect volume.VolumePluginAspect
 
-	// jivaProProfile holds persistent volume provisioner's profile properties
+	// jivaProProfile holds persistent volume provisioner's profile
 	// This can be set lazily.
-	jivaProProfile volume.VolumeProvisionerProfile
+	jivaProProfile vProfile.VolumeProvisionerProfile
 }
 
 // TODO
@@ -131,7 +143,7 @@ func (j *jivaUtil) Name() string {
 
 // JivaProProfile sets the persistent volume provisioner's profile. This returns
 // true as its first argument as jiva supports volume provisioner profile.
-func (j *jivaUtil) JivaProProfile(volProProfile volume.VolumeProvisionerProfile) (bool, error) {
+func (j *jivaUtil) JivaProProfile(volProProfile vProfile.VolumeProvisionerProfile) (bool, error) {
 
 	if volProProfile == nil {
 		return true, fmt.Errorf("Nil persistent volume provisioner profile was provided to '%s'", j.Name())
@@ -197,6 +209,9 @@ func (j *jivaUtil) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, e
 	return storageOrchestrator.StoragePropsReq(dc)
 }
 
+// TODO
+// Deprecate in favour of ReadStorage
+//
 // Info tries to fetch details of a jiva volume placed in an orchestrator
 func (j *jivaUtil) StorageInfo(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 
@@ -214,6 +229,40 @@ func (j *jivaUtil) StorageInfo(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVol
 	return storageOrchestrator.StorageInfoReq(pvc)
 }
 
+// ReadStorage fetches details of a jiva persistent volume
+func (j *jivaUtil) ReadStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	// TODO
+	// Move the below set of validations to StorageOps()
+	if j.jivaProProfile == nil {
+		return nil, fmt.Errorf("Nil provisioner profile in '%s'", j.Name())
+	}
+
+	oName, supported, err := j.jivaProProfile.Orchestrator()
+	if err != nil {
+		return nil, err
+	}
+
+	if !supported {
+		return nil, fmt.Errorf("No orchestrator support in '%s:%s'", j.jivaProProfile.Label(), j.jivaProProfile.Name())
+	}
+
+	orchestrator, err := orchprovider.GetOrchestrator(oName)
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StorageOps()
+
+	if !ok {
+		return nil, fmt.Errorf("Storage operations not supported by orchestrator '%s'", orchestrator.Name())
+	}
+
+	return storageOrchestrator.ReadStorage(j.jivaProProfile)
+}
+
+// TODO
+// Deprecate in favour of AddStorage
 // Provision tries to creates a jiva volume via an orchestrator
 func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 
@@ -271,6 +320,41 @@ func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.Persiste
 	return storageOrchestrator.StoragePlacementReq(pvc)
 }
 
+// AddStorage adds a jiva persistent volume
+func (j *jivaUtil) AddStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+
+	// TODO
+	// Move the below set of validations to StorageOps() method
+	if j.jivaProProfile == nil {
+		return nil, fmt.Errorf("Provisioner profile not found for '%s'", j.Name())
+	}
+
+	oName, supported, err := j.jivaProProfile.Orchestrator()
+	if err != nil {
+		return nil, err
+	}
+
+	if !supported {
+		return nil, fmt.Errorf("No orchestrator support in '%s:%s'", j.jivaProProfile.Label(), j.jivaProProfile.Name())
+	}
+
+	orchestrator, err := orchprovider.GetOrchestrator(oName)
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StorageOps()
+
+	if !ok {
+		return nil, fmt.Errorf("Storage operations not supported by orchestrator '%s'", orchestrator.Name())
+	}
+
+	return storageOrchestrator.AddStorage(j.jivaProProfile)
+}
+
+// TODO
+// Deprecate in favour of profile
+//
 // initLabels is a utility function that will initialize the Labels
 // of a PersistentVolumeClaim if not done so already.
 func initLabels(pvc *v1.PersistentVolumeClaim) error {
@@ -286,6 +370,9 @@ func initLabels(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // verifySpecs is a utility function that will verify the Spec
 // of a PersistentVolumeClaim.
 func verifySpecs(pvc *v1.PersistentVolumeClaim) error {
@@ -297,6 +384,9 @@ func verifySpecs(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setJivaLblProps function sets jiva specific properties with defaults
 // if not done so already.
 func setJivaLblProps(pvc *v1.PersistentVolumeClaim) error {
@@ -314,6 +404,9 @@ func setJivaLblProps(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setJivaSpecProps function sets jiva specific properties with defaults
 // if not done so already.
 func setJivaSpecProps(pvc *v1.PersistentVolumeClaim) error {
@@ -349,6 +442,9 @@ func setJivaSpecProps(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // getStorageSize gets the size of the storage if it was specified in
 // persistent volume claim
 func getStorageSize(pvc *v1.PersistentVolumeClaim) (resource.Quantity, error) {
@@ -367,6 +463,9 @@ func getStorageSize(pvc *v1.PersistentVolumeClaim) (resource.Quantity, error) {
 	return size, nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setRegion sets the region property of a PersistentVolumeClaim
 // if not done so already.
 func (j *jivaUtil) setRegion(pvc *v1.PersistentVolumeClaim) error {
@@ -405,6 +504,9 @@ func (j *jivaUtil) setRegion(pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setDC sets the datacenter property of a PersistentVolumeClaim
 // if not done so already.
 func (j *jivaUtil) setDC(pvc *v1.PersistentVolumeClaim) (string, error) {
@@ -434,6 +536,9 @@ func (j *jivaUtil) setDC(pvc *v1.PersistentVolumeClaim) (string, error) {
 	return dc, nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setCS sets the container storage properties in a PersistentVolumeClaim
 // if not done so already.
 func (j *jivaUtil) setCS(dc string, pvc *v1.PersistentVolumeClaim) error {
@@ -466,6 +571,9 @@ func (j *jivaUtil) setCS(dc string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setCN sets the container networking properties in a PersistentVolumeClaim
 // if not done so already.
 //
@@ -569,6 +677,9 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // getBackendCount fetches the backend count i.e. no of replicas
 // from the provided Persistent Volume Claim
 func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
@@ -586,6 +697,9 @@ func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setBackendIPs sets the backend IPs when provided with a particular
 // network range & pvc. PVC i.e. Persistent Volume Claim has the backend count
 // i.e. replica count.
@@ -610,6 +724,9 @@ func setBackendIPs(networkCIDR string, pvc *v1.PersistentVolumeClaim) error {
 	return nil
 }
 
+// TODO
+// Deprecate in favour of profile
+//
 // setBackendIPsAsString will set the backend ips label with a comma separated
 // list of IP addresses. These ip address(es) will be used during the creation
 // of jiva backend container(s).

@@ -10,7 +10,19 @@ import (
 	"strings"
 )
 
-// IPMask will return the IPMask in hexadecimal string form
+// IsCIDR validates if passed argument i.e. cidr is actually
+// in CIDR format
+func IsCIDR(cidr string) bool {
+	// This handles validation aspects
+	_, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// CIDRSubnet will return the IPMask in decimal format
 // e.g. 192.0.2.1/24 will return ("24", nil)
 func CIDRSubnet(cidr string) (string, error) {
 

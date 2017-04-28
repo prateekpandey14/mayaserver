@@ -9,14 +9,15 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-type OrchProviderFactory func(name string) (OrchestratorInterface, error)
+type OrchProviderFactory func(label v1.NameLabel, name v1.OrchestratorRegistry) (OrchestratorInterface, error)
 
 // Registration is managed in a safe manner via these variables
 var (
 	orchProviderRegMutex sync.Mutex
-	orchProviderRegistry = make(map[string]OrchProviderFactory)
+	orchProviderRegistry = make(map[v1.OrchestratorRegistry]OrchProviderFactory)
 )
 
 // RegisterOrchestrator registers a orchestration provider by the provider's name.
@@ -26,21 +27,21 @@ var (
 // NOTE:
 //    Each implementation of orchestrator plugin need to call
 // RegisterOrchestrator inside their init() function.
-func RegisterOrchestrator(name string, oInstFactory OrchProviderFactory) {
+func RegisterOrchestrator(name v1.OrchestratorRegistry, oInstFactory OrchProviderFactory) {
 	orchProviderRegMutex.Lock()
 	defer orchProviderRegMutex.Unlock()
 
 	if _, found := orchProviderRegistry[name]; found {
-		glog.Fatalf("Orchestration provider %q was registered twice", name)
+		glog.Fatalf("Orchestration provider '%s' was registered twice", name)
 	}
 
-	glog.V(1).Infof("Registered orchestration provider %q", name)
+	glog.V(1).Infof("Registered '%s' as orchestration provider", name)
 	orchProviderRegistry[name] = oInstFactory
 }
 
 // GetOrchestrator creates a new instance of the named orchestration provider,
 // or nil if the name is unknown.
-func GetOrchestrator(name string) (OrchestratorInterface, error) {
+func GetOrchestrator(name v1.OrchestratorRegistry) (OrchestratorInterface, error) {
 	orchProviderRegMutex.Lock()
 	defer orchProviderRegMutex.Unlock()
 
@@ -50,5 +51,7 @@ func GetOrchestrator(name string) (OrchestratorInterface, error) {
 	}
 
 	// Orchestration provider's instance creating function is invoked here
-	return oInstFactory(name)
+	// The orchestration provider label is decided here. The label is common to all
+	// orchestration provider implementors.
+	return oInstFactory(v1.OrchestratorNameLbl, name)
 }

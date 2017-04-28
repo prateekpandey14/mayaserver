@@ -9,9 +9,10 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
+	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-type VolumeProvisionerFactory func(name string) (VolumeInterface, error)
+type VolumeProvisionerFactory func(label, name string) (VolumeInterface, error)
 
 // Registration is managed in a safe manner via these variables
 var (
@@ -50,5 +51,7 @@ func GetVolumeProvisioner(name string) (VolumeInterface, error) {
 	}
 
 	// Persistent volume provisioner's instance creating function is invoked here
-	return vpInstFactory(name)
+	// The persistent volume provisioner label is decided here. This label is common
+	// to all persistent volume provisioner implementors.
+	return vpInstFactory(string(v1.VolumeProvisionerNameLbl), name)
 }

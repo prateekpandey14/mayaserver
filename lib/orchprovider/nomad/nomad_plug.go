@@ -120,6 +120,16 @@ func NewNomadOrchestrator(name string, region string, config io.Reader) (orchpro
 	return nOrch, nil
 }
 
+// Label provides the label assigned against this orchestrator. This is used
+// along with Name() method.
+// This is an implementation of the orchprovider.OrchestratorInterface interface.
+func (n *NomadOrchestrator) Label() string {
+	// TODO
+	// provide a label property to n
+	// This value will be taken care of by the new orchprovider/registry.go
+	return string(v1.OrchestratorNameLbl)
+}
+
 // Name provides the name of this orchestrator.
 // This is an implementation of the orchprovider.OrchestratorInterface interface.
 func (n *NomadOrchestrator) Name() string {
@@ -134,13 +144,32 @@ func (n *NomadOrchestrator) Region() string {
 	return n.region
 }
 
+// TODO
+// Deprecate once orchestrator profiles are ready. Deprecate in favour of StorageOps.
+//
 // StoragePlacements is this orchestration provider's
 // implementation of the orchprovider.OrchestratorInterface interface.
 func (n *NomadOrchestrator) StoragePlacements() (orchprovider.StoragePlacements, bool) {
-
 	return n, true
 }
 
+// TODO
+// Will be supported in place of StoragePlacements
+//
+// StorageOps deals with storage related operations e.g. scheduling, placements,
+// removal, etc. of persistent volume containers. The low level workings are
+// delegated to the orchestration provider.
+//
+// NOTE:
+//    This is orchestration provider's implementation of
+// orchprovider.OrchestratorInterface interface.
+func (n *NomadOrchestrator) StorageOps() (orchprovider.StorageOps, bool) {
+	return nil, false
+}
+
+// TODO
+// Deprecate once orchestrator profiles are ready
+//
 // NetworkPlacements is this orchestration provider's
 // implementation of the orchprovider.OrchestratorInterface interface.
 //
@@ -152,6 +181,9 @@ func (n *NomadOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements,
 	return n, true
 }
 
+// TODO
+// Deprecate once orchestrator profiles are ready
+//
 // NetworkPropsReq is a contract method implementation of
 // orchprovider.NetworkPlacements interface. In this implementation,
 // network resource details will be fetched from a Nomad deployment.

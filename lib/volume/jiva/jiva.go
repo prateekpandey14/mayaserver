@@ -41,8 +41,8 @@ func init() {
 
 		// Below is a callback function that creates a new instance of jiva as persistent
 		// volume provisioner plugin
-		func(name string) (volume.VolumeInterface, error) {
-			return newJivaProvisioner(name)
+		func(label, name string) (volume.VolumeInterface, error) {
+			return newJivaProvisioner(label, name)
 		})
 }
 
@@ -88,12 +88,13 @@ func (jAspect *JivaStorNomadAspect) DefaultDatacenter() (string, error) {
 //  2. volume.Provisioner interface
 //  3. volume.Deleter interface
 type jivaStor struct {
+	// label assigned against this jiva persistent volume provisioner
+	label string
 
-	// name is the name of this jiva volume plugin.
+	// name is the name of this jiva persistent volume provisioner.
 	name string
 
-	// jivaProUtil is the instance that does all the low level jiva persistent
-	// volume provisioner works.
+	// jivaProUtil enables all low level jiva persistent volume provisioner features.
 	jivaProUtil JivaInterface
 
 	// TODO
@@ -156,22 +157,39 @@ func newJivaStor(name string, config io.Reader, aspect volume.VolumePluginAspect
 //
 // Note:
 //    This function aligns with the callback function signature
-func newJivaProvisioner(name string) (volume.VolumeInterface, error) {
+func newJivaProvisioner(label, name string) (volume.VolumeInterface, error) {
 
-	glog.Infof("Building new instance of jiva persistent volume provisioner '%s'", name)
+	if label == "" {
+		return nil, fmt.Errorf("Label not provided for jiva persistent volume provisioner instance")
+	}
 
-	jUtil, err := newJivaProUtil()
+	if name == "" {
+		return nil, fmt.Errorf("Name not provided for jiva persistent volume provisioner instance")
+	}
+
+	jProUtil, err := newJivaProUtil()
 	if err != nil {
 		return nil, err
 	}
 
+	glog.Infof("Building new instance of jiva persistent volume provisioner '%s:%s'", label, name)
+
 	// build the provisioner instance
 	jivaStor := &jivaStor{
+		label:       label,
 		name:        name,
-		jivaProUtil: jUtil,
+		jivaProUtil: jProUtil,
 	}
 
 	return jivaStor, nil
+}
+
+// Label returns the label assigned against this jiva persistent volume provisioner
+//
+// NOTE:
+//    This is a contract implementation of volume.VolumeInterface
+func (j *jivaStor) Label() string {
+	return j.label
 }
 
 // Name returns the namespaced name of this volume
@@ -184,8 +202,12 @@ func (j *jivaStor) Name() string {
 
 // Profile sets the persistent volume provisioner profile against this jiva volume
 // provisioner.
-func (j *jivaStor) Profile(volProProfile volume.VolumeProvisionerProfile) (bool, error) {
-	return j.jivaProUtil.JivaProProfile(volProProfile)
+func (j *jivaStor) Profile(pvc *v1.PersistentVolumeClaim) (bool, error) {
+	// TODO
+	// logic to build appropriate profile
+
+	//return j.jivaProUtil.JivaProProfile(volProProfile)
+	return true, nil
 }
 
 // TODO
