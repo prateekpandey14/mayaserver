@@ -78,14 +78,27 @@ type VolumeProvisionerProfile interface {
 	NetworkSubnet() (string, error)
 }
 
-// pvcVolProProfile is the concrete implementation of volume.VolumeProvisionerProfile
+// GetVolProProfile will return a specific persistent volume provisioner profile.
+// It will decide first based on the provided specifications failing which will
+// ensure a default profile is returned.
+func GetVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
+	// TODO
+	// Logic that decides the specifc volume provisioner profile to be returned
+	return nil, nil
+}
+
+// pvcVolProProfile is a persistent volume provisioner profile that is based on
+// persistent volume claim.
+//
+// NOTE:
+//    This is a concrete implementation of volume.VolumeProvisionerProfile
 type pvcVolProProfile struct {
 	pvc *v1.PersistentVolumeClaim
 }
 
-// NewPvcVolProProfile provides a new instance of VolumeProvisionerProfile that is
+// newPvcVolProProfile provides a new instance of VolumeProvisionerProfile that is
 // based on pvc (i.e. persistent volume claim).
-func NewPvcVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
+func newPvcVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
 	if pvc == nil {
 		return nil, fmt.Errorf("Nil pvc in pvc based persistent volume provisioner profile")
 	}
@@ -132,7 +145,7 @@ func (pp *pvcVolProProfile) PVC() (*v1.PersistentVolumeClaim, error) {
 // e.g. K8s, Nomad, Mesos, Swarm, etc. It can be Docker engine as well.
 func (pp *pvcVolProProfile) Orchestrator() (v1.OrchestratorRegistry, bool, error) {
 	// Extract the orchestrator provider name from pvc
-	orchestratorName := pp.pvc.Labels[string(v1.OrchestratorNameLbl)]
+	orchestratorName := v1.OrchestratorName(pp.pvc.Labels)
 	if orchestratorName == "" {
 		return "", true, fmt.Errorf("Missing orchestrator name in '%s:%s'", pp.Label(), pp.Name())
 	}
@@ -144,7 +157,7 @@ func (pp *pvcVolProProfile) Orchestrator() (v1.OrchestratorRegistry, bool, error
 // VSMName gets the name of the VSM
 func (pp *pvcVolProProfile) VSMName() (string, error) {
 	// Extract the VSM name from pvc
-	vsmName := pp.pvc.Labels[string(v1.PVPVSMNameLbl)]
+	vsmName := v1.VSMName(pp.pvc.Labels)
 
 	if vsmName == "" {
 		return "", fmt.Errorf("Missing VSM name in '%s:%s'", pp.Label(), pp.Name())
@@ -156,7 +169,7 @@ func (pp *pvcVolProProfile) VSMName() (string, error) {
 // ControllerCount gets the number of controllers
 func (pp *pvcVolProProfile) ControllerCount() (int, error) {
 	// Extract the controller count from pvc
-	cCount := pp.pvc.Labels[string(v1.PVPControllerCountLbl)]
+	cCount := v1.ControllerCount(pp.pvc.Labels)
 
 	iCCount, err := strconv.Atoi(cCount)
 	if err != nil {
@@ -169,7 +182,7 @@ func (pp *pvcVolProProfile) ControllerCount() (int, error) {
 // ControllerImage gets the controller's image currently its docker image label.
 func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
 	// Extract the controller image from pvc
-	cImg := pp.pvc.Labels[string(v1.PVPControllerImageLbl)]
+	cImg := v1.ControllerImage(pp.pvc.Labels)
 
 	if cImg == "" {
 		return "", true, fmt.Errorf("Missing controller image in '%s:%s'", pp.Label(), pp.Name())
@@ -181,7 +194,7 @@ func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
 // ControllerSize gets the controller storage size
 func (pp *pvcVolProProfile) ControllerSize() (string, error) {
 	// Extract the controller size from pvc
-	cSize := pp.pvc.Labels[string(v1.PVPControllerSizeLbl)]
+	cSize := v1.ControllerSize(pp.pvc.Labels)
 
 	if cSize == "" {
 		return "", fmt.Errorf("Missing controller size in '%s:%s'", pp.Label(), pp.Name())
@@ -194,7 +207,7 @@ func (pp *pvcVolProProfile) ControllerSize() (string, error) {
 // provisioner
 func (pp *pvcVolProProfile) ReqReplica() bool {
 	// Extract the replica truthiness (i.e. is replica required) from pvc
-	reqReplica := pp.pvc.Labels[string(v1.PVPReqReplicaLbl)]
+	reqReplica := v1.ReqReplica(pp.pvc.Labels)
 	// Default is true
 	if reqReplica == "" {
 		return true
@@ -206,7 +219,7 @@ func (pp *pvcVolProProfile) ReqReplica() bool {
 // ReplicaImage gets the replica's image currently its docker image label.
 func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
 	// Extract the replica image from pvc
-	rImg := pp.pvc.Labels[string(v1.PVPReplicaImageLbl)]
+	rImg := v1.ReplicaImage(pp.pvc.Labels)
 
 	if rImg == "" {
 		return "", true, fmt.Errorf("Missing replica image in '%s:%s'", pp.Label(), pp.Name())
@@ -218,7 +231,7 @@ func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
 // ReplicaSize gets the storage size for each replica(s)
 func (pp *pvcVolProProfile) ReplicaSize() (string, error) {
 	// Extract the replica size from pvc
-	rSize := pp.pvc.Labels[string(v1.PVPReplicaSizeLbl)]
+	rSize := v1.ReplicaSize(pp.pvc.Labels)
 
 	if rSize == "" {
 		return "", fmt.Errorf("Missing replica size in '%s:%s'", pp.Label(), pp.Name())
@@ -230,7 +243,7 @@ func (pp *pvcVolProProfile) ReplicaSize() (string, error) {
 // ReplicaCount get the number of replicas required
 func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
 	// Extract the replica count from pvc
-	rCount := pp.pvc.Labels[string(v1.PVPReplicaCountLbl)]
+	rCount := v1.ReplicaCount(pp.pvc.Labels)
 
 	if rCount == "" {
 		return 0, fmt.Errorf("Missing replica count in '%s:%s'", pp.Label(), pp.Name())
@@ -248,7 +261,7 @@ func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
 func (pp *pvcVolProProfile) ReqNetworking() bool {
 	// Extract the networking truthiness (i.e. is networking operations required)
 	// from pvc
-	reqNet := pp.pvc.Labels[string(v1.PVPReqNetworkingLbl)]
+	reqNet := v1.ReqNetworking(pp.pvc.Labels)
 	// Default is true
 	if reqNet == "" {
 		return true
@@ -261,7 +274,7 @@ func (pp *pvcVolProProfile) ReqNetworking() bool {
 // controller(s)
 func (pp *pvcVolProProfile) ControllerIPs() ([]string, error) {
 	// Extract the controller IPs from pvc
-	cIPs := pp.pvc.Labels[string(v1.PVPControllerIPsLbl)]
+	cIPs := v1.ControllerIPs(pp.pvc.Labels)
 
 	if cIPs == "" {
 		return nil, fmt.Errorf("Missing controller IPs in '%s:%s'", pp.Label(), pp.Name())
@@ -279,7 +292,7 @@ func (pp *pvcVolProProfile) ControllerIPs() ([]string, error) {
 // ReplicaIPs gets the IP addresses that needs to be assigned against the replica(s)
 func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
 	// Extract the controller IPs from pvc
-	rIPs := pp.pvc.Labels[string(v1.PVPReplicaIPsLbl)]
+	rIPs := v1.ReplicaIPs(pp.pvc.Labels)
 
 	if rIPs == "" {
 		return nil, fmt.Errorf("Missing replica IPs in '%s:%s'", pp.Label(), pp.Name())
@@ -297,7 +310,7 @@ func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
 // NetworkAddr gets the network address in CIDR format
 func (pp *pvcVolProProfile) NetworkAddr() (string, error) {
 	// Extract the network address from pvc
-	nAddr := pp.pvc.Labels[string(v1.PVPNetworkAddrLbl)]
+	nAddr := v1.NetworkAddr(pp.pvc.Labels)
 
 	if nAddr == "" {
 		return "", fmt.Errorf("Missing network address in '%s:%s'", pp.Label(), pp.Name())
@@ -324,4 +337,59 @@ func (pp *pvcVolProProfile) NetworkSubnet() (string, error) {
 	}
 
 	return subnet, nil
+}
+
+// srVolProProfile represents a single replica based persistent volume
+// provisioner profile. It relies on persistent volume claim to source other
+// volume provisioner properties.
+//
+// NOTE:
+//    Replica count property specified in persistent volume claim will override
+// the one specified in etcd
+//
+// NOTE:
+//    This is a concrete implementation of volume.VolumeProvisionerProfile
+type srVolProProfile struct {
+	pvcVolProProfile
+}
+
+// ReqReplica indicates if replica(s) are required by the persistent volume
+// provisioner
+func (srp *srVolProProfile) ReqReplica() bool {
+	return util.CheckTruthy("true")
+}
+
+// ReplicaCount gets the number of replicas required. In most of the cases, it
+// returns 1. However, if replica count is specified in pvc then the specs value
+// is considered.
+func (srp *srVolProProfile) ReplicaCount() (int, error) {
+	// Extract the replica count from pvc
+	rCount := v1.ReplicaCount(srp.pvc.Labels)
+
+	if rCount == "" {
+		rCount = "1"
+	}
+
+	iRCount, err := strconv.Atoi(rCount)
+	if err != nil {
+		return 0, err
+	}
+	return iRCount, nil
+}
+
+// etcdVolProProfile represents a generic volume provisioner profile whose
+// properties are stored in etcd database.
+//
+// NOTE:
+//    There can be multiple persistent volume provisioner profiles stored in
+// etcd
+//
+// NOTE:
+//    Properties specified in persistent volume claim will override the ones
+// specified in etcd
+//
+// NOTE:
+//    This is a concrete implementation of volume.VolumeProvisionerProfile
+type etcdVolProProfile struct {
+	pvc *v1.PersistentVolumeClaim
 }
