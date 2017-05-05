@@ -12,12 +12,12 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 )
 
-type OrchProviderFactory func(label v1.NameLabel, name v1.OrchestratorRegistry) (OrchestratorInterface, error)
+type OrchProviderFactory func(label v1.NameLabel, name v1.OrchProviderRegistry) (OrchestratorInterface, error)
 
 // Registration is managed in a safe manner via these variables
 var (
 	orchProviderRegMutex sync.Mutex
-	orchProviderRegistry = make(map[v1.OrchestratorRegistry]OrchProviderFactory)
+	orchProviderRegistry = make(map[v1.OrchProviderRegistry]OrchProviderFactory)
 )
 
 // RegisterOrchestrator registers a orchestration provider by the provider's name.
@@ -27,7 +27,7 @@ var (
 // NOTE:
 //    Each implementation of orchestrator plugin need to call
 // RegisterOrchestrator inside their init() function.
-func RegisterOrchestrator(name v1.OrchestratorRegistry, oInstFactory OrchProviderFactory) {
+func RegisterOrchestrator(name v1.OrchProviderRegistry, oInstFactory OrchProviderFactory) {
 	orchProviderRegMutex.Lock()
 	defer orchProviderRegMutex.Unlock()
 
@@ -41,7 +41,7 @@ func RegisterOrchestrator(name v1.OrchestratorRegistry, oInstFactory OrchProvide
 
 // GetOrchestrator creates a new instance of the named orchestration provider,
 // or nil if the name is unknown.
-func GetOrchestrator(name v1.OrchestratorRegistry) (OrchestratorInterface, error) {
+func GetOrchestrator(name v1.OrchProviderRegistry) (OrchestratorInterface, error) {
 	orchProviderRegMutex.Lock()
 	defer orchProviderRegMutex.Unlock()
 

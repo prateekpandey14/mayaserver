@@ -14,8 +14,8 @@ func ReplicaCount(profileMap map[string]string) string {
 	return profileMap[string(PVPReplicaCountLbl)]
 }
 
-// NetworkAddr will fetch the value specified against persistent volume network
-// address if available otherwise will return blank.
+// NetworkAddr will fetch the value specified against orchestration provider
+// network address if available otherwise will return blank.
 //
 // NOTE:
 //    This function need not bother about any validations
@@ -25,7 +25,25 @@ func NetworkAddr(profileMap map[string]string) string {
 	}
 
 	// Extract network addr
-	return profileMap[string(PVPNetworkAddrLbl)]
+	return profileMap[string(OPNetworkAddrLbl)]
+}
+
+// NetworkAddrDef will fetch the default value of orchestration provider network
+// address.
+//
+// NOTE:
+//    This function need not bother about any validations
+func NetworkAddrDef() string {
+	return string(OPNetworkAddrDef)
+}
+
+// NetworkSubnetDef will fetch the default value of orchestration provider
+// network subnet.
+//
+// NOTE:
+//    This function need not bother about any validations
+func NetworkSubnetDef() string {
+	return string(OPNetworkSubnetDef)
 }
 
 // ReplicaIPs will fetch the value specified against persistent volume replica
@@ -180,4 +198,73 @@ func OrchestratorName(profileMap map[string]string) string {
 
 	// Extract orchestrator name
 	return profileMap[string(OrchestratorNameLbl)]
+}
+
+// OrchProfileName will fetch the value specified against persistent volume's
+// orchestrator profile name if available otherwise will return blank.
+//
+// NOTE:
+//    This function need not bother about any validations
+func OrchProfileName(profileMap map[string]string) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract orchestrator profile name
+	return profileMap[string(OrchProfileNameLbl)]
+}
+
+// NS will fetch the value specified against orchestration provider
+// namespace if available otherwise will return blank.
+//
+// NOTE:
+//    This function need not bother about any validations
+func NS(profileMap map[string]string) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract orchestrator namespace
+	return profileMap[string(OrchNSLbl)]
+}
+
+// NSDef will fetch the default value of orchestration provider namespace.
+//
+// NOTE:
+//    This function need not bother about any validations
+func NSDef() string {
+	return string(OrchNSDefLbl)
+}
+
+// PodName will fetch the value specified against persistent volume
+// VSM name if available otherwise will return blank.
+//
+// NOTE:
+//    This function need not bother about any validations
+func PodName(profileMap map[string]string) string {
+	// Extract VSM name
+	return VSMName(profileMap)
+}
+
+// InCluster will fetch the value specified against orchestration provider
+// in-cluster flag if available otherwise will return blank.
+//
+// NOTE:
+//    This function need not bother about any validations
+func InCluster(profileMap map[string]string) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract orchestrator in-cluster flag
+	return profileMap[string(OPInClusterLbl)]
+}
+
+// InClusterDef will fetch the default value of orchestration provider
+// in-cluster flag.
+//
+// NOTE:
+//    This function need not bother about any validations
+func InClusterDef() string {
+	return string(OPInClusterDef)
 }

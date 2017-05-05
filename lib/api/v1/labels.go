@@ -55,21 +55,43 @@ const (
 	DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
 )
 
-// OrchProfileLabel type will be used to determine orchestrator specific profile values
-// via this typed label
-type OrchProfileLabel string
+// OrchProviderProfileLabel is a typed label to determine orchestration provider
+// profile's values.
+type OrchProviderProfileLabel string
 
 const (
 	// Label / Tag for an orchestrator profile name
-	OrchProviderProfileNameLbl OrchProfileLabel = "orchprovider.mapi.openebs.io/profile-name"
+	OrchProfileNameLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/profile-name"
 	// Label / Tag for an orchestrator region
-	OrchProviderRegionLbl OrchProfileLabel = "orchprovider.mapi.openebs.io/region"
+	OrchRegionLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/region"
 	// Label / Tag for an orchestrator datacenter
-	OrchProviderDatacenterLbl OrchProfileLabel = "orchprovider.mapi.openebs.io/dc"
+	OrchDCLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/dc"
+	// Label / Tag for an orchestrator namespace
+	OrchNSLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/ns"
+	// Label / Tag for an orchestrator network address in CIDR format
+	OPNetworkAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/network-cidr"
+	// Label / Tag for an orchestrator's in-cluster flag
+	OPInClusterLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/in-cluster"
 )
 
-// VolumeProvisionerProfileLabel type will be used to determine volume provisioner
-// specific profile values via this typed label
+// OrchProviderDefaults is a typed label to provide default values w.r.t
+// orchestration provider properties.
+type OrchProviderDefaults string
+
+const (
+	// Default value for orchestrator's network address
+	// NOTE: Should be in valid CIDR notation
+	OPNetworkAddrDef OrchProviderDefaults = "172.28.128.1/24"
+	// Default value for orchestrator's network subnet
+	OPNetworkSubnetDef OrchProviderDefaults = "24"
+	// Default value for orchestrator's in-cluster flag
+	OPInClusterDef OrchProviderDefaults = "true"
+	// Default value for orchestrator namespace
+	OrchNSDefLbl OrchProviderDefaults = "default"
+)
+
+// VolumeProvisionerProfileLabel is a typed label to determine volume provisioner
+// profile values.
 type VolumeProvisionerProfileLabel string
 
 const (
@@ -99,8 +121,6 @@ const (
 	PVPControllerSizeLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-size"
 	// Label / Tag for a persistent volume provisioner's controller IPs
 	PVPControllerIPsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-ips"
-	// Label / Tag for a persistent volume provisioner's network address in CIDR format
-	PVPNetworkAddrLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/network-cidr"
 )
 
 // NameLabel type will be used to identify various maya api service components
@@ -116,17 +136,17 @@ const (
 
 // OrchestratorRegistry type will be used to register various maya api service
 // orchestrators.
-type OrchestratorRegistry string
+type OrchProviderRegistry string
 
 const (
 	// K8sOrchestrator states Kubernetes as orchestration provider plugin.
 	// This is used for registering Kubernetes as an orchestration provider in maya
 	// api server.
-	K8sOrchestrator OrchestratorRegistry = "kubernetes"
+	K8sOrchestrator OrchProviderRegistry = "kubernetes"
 	// NomadOrchestrator states Nomad as orchestration provider plugin.
 	// This is used for registering Nomad as an orchestration provider in maya api
 	// server.
-	NomadOrchestrator OrchestratorRegistry = "nomad"
+	NomadOrchestrator OrchProviderRegistry = "nomad"
 )
 
 // VolumeProvisionerRegistry type will be used to register various maya api
@@ -139,14 +159,14 @@ const (
 	JivaVolumeProvisioner VolumeProvisionerRegistry = "jiva"
 )
 
-// OrchestratorProfile type will be used to register various maya api service
-// orchestrator profiles
-type OrchestratorProfileRegistry string
+// OrchProviderProfileRegistry type will be used to register various maya api
+// service orchestrator profiles
+type OrchProviderProfileRegistry string
 
 const (
 	// This is the name of PVC as orchestration provider profile
 	// This is used for labelling PVC as a orchestration provider profile
-	PVCOrchestratorProfile OrchestratorProfileRegistry = "pvc"
+	PVCOrchestratorProfile OrchProviderProfileRegistry = "pvc"
 )
 
 // VolumeProvisionerProfileRegistry type will be used to register various maya api service

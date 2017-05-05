@@ -104,17 +104,31 @@ const (
 // PersistentVolume represents a named volume in OpenEBS that may be accessed
 // by any container, VM, etc. This represents a CREATED resource.
 type PersistentVolume struct {
-	metav1.TypeMeta
+	metav1.TypeMeta `json:",inline"`
 	// +optional
-	metav1.ObjectMeta
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	//Spec defines a persistent volume owned by OpenEBS cluster
 	// +optional
-	Spec PersistentVolumeSpec
+	Spec PersistentVolumeSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
 
 	// Status represents the current information about persistent volume.
 	// +optional
-	Status PersistentVolumeStatus
+	Status PersistentVolumeStatus `json:"status,omitempty" protobuf:"bytes,3,opt,name=status"`
+}
+
+// PersistentVolumeList is a list of PersistentVolume items.
+type PersistentVolumeList struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// Standard list metadata.
+	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// List of persistent volumes.
+	// More info: http://kubernetes.io/docs/user-guide/persistent-volumes
+	Items []PersistentVolume `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 // PersistentVolumeSource represents the source type of the persistent volume.
@@ -213,13 +227,6 @@ const (
 	// used for PersistentVolumes that failed to be correctly recycled or deleted after being released from a claim
 	VolumeFailed PersistentVolumePhase = "Failed"
 )
-
-type PersistentVolumeList struct {
-	metav1.TypeMeta
-	// +optional
-	metav1.ListMeta
-	Items []PersistentVolume
-}
 
 // Represents a Persistent Disk resource in OpenEBS.
 //

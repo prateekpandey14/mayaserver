@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
-	"github.com/openebs/mayaserver/lib/nethelper"
 	"github.com/openebs/mayaserver/lib/util"
 )
 
@@ -37,7 +36,7 @@ type VolumeProvisionerProfile interface {
 	// Note:
 	//    OpenEBS believes in running storage software in containers & hence
 	// these container specific orchestrators.
-	Orchestrator() (v1.OrchestratorRegistry, bool, error)
+	Orchestrator() (v1.OrchProviderRegistry, bool, error)
 
 	// Get the name of the VSM
 	VSMName() (string, error)
@@ -70,12 +69,6 @@ type VolumeProvisionerProfile interface {
 
 	// Get the IP addresses that needs to be assigned against the replica(s)
 	ReplicaIPs() ([]string, error)
-
-	// Get the network address in CIDR format
-	NetworkAddr() (string, error)
-
-	// Get the network subnet
-	NetworkSubnet() (string, error)
 }
 
 // GetVolProProfile will return a specific persistent volume provisioner profile.
@@ -83,7 +76,15 @@ type VolumeProvisionerProfile interface {
 // ensure a default profile is returned.
 func GetVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
 	// TODO
-	// Logic that decides the specifc volume provisioner profile to be returned
+	// Logic that decides the specific volume provisioner profile to be returned
+	return nil, nil
+}
+
+// GetVolProProfileByName will return a persistent volume provisioner profile by
+// looking up from the provided profile name.
+func GetVolProProfileByName(name string) (VolumeProvisionerProfile, error) {
+	// TODO
+	// Logic that decides the volume provisioner profile to be returned
 	return nil, nil
 }
 
@@ -91,7 +92,7 @@ func GetVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, 
 // persistent volume claim.
 //
 // NOTE:
-//    This is a concrete implementation of volume.VolumeProvisionerProfile
+//    This is a concrete implementation of volumeprovisioner.VolumeProvisionerProfile
 type pvcVolProProfile struct {
 	pvc *v1.PersistentVolumeClaim
 }
@@ -143,7 +144,7 @@ func (pp *pvcVolProProfile) PVC() (*v1.PersistentVolumeClaim, error) {
 // Orchestrator gets the suitable orchestration provider.
 // A persistent volume provisioner plugin may be linked with a orchestrator
 // e.g. K8s, Nomad, Mesos, Swarm, etc. It can be Docker engine as well.
-func (pp *pvcVolProProfile) Orchestrator() (v1.OrchestratorRegistry, bool, error) {
+func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error) {
 	// Extract the orchestrator provider name from pvc
 	orchestratorName := v1.OrchestratorName(pp.pvc.Labels)
 	if orchestratorName == "" {
@@ -151,7 +152,7 @@ func (pp *pvcVolProProfile) Orchestrator() (v1.OrchestratorRegistry, bool, error
 	}
 
 	// Get the orchestrator instance
-	return v1.OrchestratorRegistry(orchestratorName), true, nil
+	return v1.OrchProviderRegistry(orchestratorName), true, nil
 }
 
 // VSMName gets the name of the VSM
@@ -305,38 +306,6 @@ func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
 	}
 
 	return rIPsArr, nil
-}
-
-// NetworkAddr gets the network address in CIDR format
-func (pp *pvcVolProProfile) NetworkAddr() (string, error) {
-	// Extract the network address from pvc
-	nAddr := v1.NetworkAddr(pp.pvc.Labels)
-
-	if nAddr == "" {
-		return "", fmt.Errorf("Missing network address in '%s:%s'", pp.Label(), pp.Name())
-	}
-
-	if !nethelper.IsCIDR(nAddr) {
-		return "", fmt.Errorf("Network address not in CIDR format in '%s:%s'", pp.Label(), pp.Name())
-	}
-
-	return nAddr, nil
-}
-
-// NetworkSubnet gets the network's subnet in decimal format
-func (pp *pvcVolProProfile) NetworkSubnet() (string, error) {
-	// Extract the subnet from network address
-	nAddr, err := pp.NetworkAddr()
-	if err != nil {
-		return "", err
-	}
-
-	subnet, err := nethelper.CIDRSubnet(nAddr)
-	if err != nil {
-		return "", err
-	}
-
-	return subnet, nil
 }
 
 // srVolProProfile represents a single replica based persistent volume

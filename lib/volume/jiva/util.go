@@ -67,7 +67,7 @@ type StorageOps interface {
 	// Deprecate in favour of ReadStorage
 	StorageInfo(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
-	ReadStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+	ReadStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
 
 	// Add operation
 	// TODO
@@ -230,7 +230,7 @@ func (j *jivaUtil) StorageInfo(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVol
 }
 
 // ReadStorage fetches details of a jiva persistent volume
-func (j *jivaUtil) ReadStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+func (j *jivaUtil) ReadStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
 
 	// TODO
 	// Move the below set of validations to StorageOps()

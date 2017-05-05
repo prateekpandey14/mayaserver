@@ -115,5 +115,5 @@ type StorageOps interface {
 	DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
 
 	// ReadStorage will fetch information about the persistent volume
-	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
 }
