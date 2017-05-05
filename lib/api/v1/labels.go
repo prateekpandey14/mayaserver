@@ -157,6 +157,9 @@ const (
 	// JivaVolumeProvisioner states Jiva as persistent volume provisioner plugin.
 	// This is used for registering Jiva as a volume provisioner in maya api server.
 	JivaVolumeProvisioner VolumeProvisionerRegistry = "jiva"
+	// DefaultVolumeProvisioner provides the default persistent volume provisioner
+	// plugin.
+	DefaultVolumeProvisioner VolumeProvisionerRegistry = JivaVolumeProvisioner
 )
 
 // OrchProviderProfileRegistry type will be used to register various maya api

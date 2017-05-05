@@ -54,6 +54,30 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 	}
 }
 
+// VSMSpecificRequest is a http handler implementation.
+// The URL path is parsed to match specific implementations.
+//
+// TODO
+//    Should it return specific types than interface{} ?
+func (s *HTTPServer) VSMSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+
+	path := strings.TrimPrefix(req.URL.Path, "/latest/vsm")
+
+	// Is req valid ?
+	if path == req.URL.Path {
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
+
+	switch {
+
+	case strings.Contains(path, "/read/"):
+		vsmName := strings.TrimPrefix(path, "/read/")
+		return s.vsmRead(resp, req, vsmName)
+	default:
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
+}
+
 func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
 
 	pvc := v1.PersistentVolumeClaim{}
@@ -177,4 +201,33 @@ func (s *HTTPServer) volumeInfo(resp http.ResponseWriter, req *http.Request, vol
 	}
 
 	return info, nil
+}
+
+// vsmRead is the http handler that fetches the details of a VSM
+func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmName string) (interface{}, error) {
+
+	if vsmName == "" {
+		return nil, fmt.Errorf("VSM name is missing")
+	}
+
+	// Get jiva persistent volume provisioner instance
+	jiva, err := volume.GetVolumeProvisioner()
+	if err != nil {
+		return nil, err
+	}
+
+	reader, ok := jiva.Reader()
+	if !ok {
+		return nil, fmt.Errorf("VSM read is not supported by '%s:%s'", jiva.Label(), jiva.Name())
+	}
+
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Name = vsmName
+
+	details, err := reader.Read(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	return details, nil
 }
