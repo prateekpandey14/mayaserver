@@ -268,3 +268,17 @@ func InCluster(profileMap map[string]string) string {
 func InClusterDef() string {
 	return string(OPInClusterDef)
 }
+
+// VolumeProvisionerProfileName will fetch the name of volume provisioner
+// profile if available otherwise will return blank.
+//
+// NOTE:
+//    This function need not bother about any validations
+func VolumeProvisionerProfileName(profileMap map[string]string) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract volume provisioner profile name
+	return profileMap[string(PVPProfileNameLbl)]
+}

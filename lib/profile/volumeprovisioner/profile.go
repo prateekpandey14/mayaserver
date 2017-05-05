@@ -71,21 +71,45 @@ type VolumeProvisionerProfile interface {
 	ReplicaIPs() ([]string, error)
 }
 
-// GetVolProProfile will return a specific persistent volume provisioner profile.
-// It will decide first based on the provided specifications failing which will
-// ensure a default profile is returned.
-func GetVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	// TODO
-	// Logic that decides the specific volume provisioner profile to be returned
-	return nil, nil
+// GetVolProProfileByPVC will return a specific persistent volume provisioner
+// profile. It will decide first based on the provided specifications failing
+// which will ensure a default profile is returned.
+func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
+	if pvc == nil {
+		return GetDefaultVolProProfile()
+	}
+
+	// Extract the name of volume provisioner profile
+	volProflName := v1.VolumeProvisionerProfileName(pvc.Labels)
+
+	if volProflName == "" {
+		return GetDefaultVolProProfile()
+	}
+
+	return GetVolProProfileByName(volProflName)
 }
 
-// GetVolProProfileByName will return a persistent volume provisioner profile by
+// GetDefaultVolProProfile will return the default volume provisioner
+// profile.
+//
+// NOTE:
+//    PVC based volume provisioner profile is considered as default
+func GetDefaultVolProProfile() (VolumeProvisionerProfile, error) {
+	return &pvcVolProProfile{}, nil
+}
+
+// TODO
+//
+// GetVolProProfileByName will return a volume provisioner profile by
 // looking up from the provided profile name.
 func GetVolProProfileByName(name string) (VolumeProvisionerProfile, error) {
 	// TODO
-	// Logic that decides the volume provisioner profile to be returned
-	return nil, nil
+	// Search from the in-memory registry
+
+	// TODO
+	// Alternatively, search from external discoverable DBs if any
+
+	return nil, fmt.Errorf("GetVolProProfileByName is not yet implemented")
 }
 
 // pvcVolProProfile is a persistent volume provisioner profile that is based on

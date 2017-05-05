@@ -53,7 +53,7 @@ type VolumeInterface interface {
 	Deleter() (Deleter, bool)
 
 	// TODO
-	// Rename to Reader ??
+	// Deprecate in favour of Reader
 	//
 	// Informer gets the instance capable of providing volume information w.r.t this
 	// persistent volume provisioner.
@@ -62,10 +62,18 @@ type VolumeInterface interface {
 	//    Will return false if providing volume information is not supported by
 	// the persistent volume provisioner.
 	Informer() (Informer, bool)
+
+	// Reader gets the instance capable of providing persistent volume information
+	// w.r.t this persistent volume provisioner.
+	//
+	// Note:
+	//    Will return false if providing persistent volume information is not
+	// supported by this persistent volume provisioner.
+	Reader() (Reader, bool)
 }
 
 // TODO
-// Rename to Reader ??
+// Deprecate in favour of Reader
 //
 // Informer interface abstracts fetching of volume related information
 // from a persistent volume provisioner.
@@ -73,6 +81,14 @@ type Informer interface {
 	// Info tries to fetch the volume details from the persistent volume
 	// provisioner.
 	Info(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+}
+
+// Reader interface abstracts fetching of persistent volume related information
+// from a persistent volume provisioner.
+type Reader interface {
+	// Read fetches the volume details from the persistent volume
+	// provisioner.
+	Read(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
 }
 
 // TODO

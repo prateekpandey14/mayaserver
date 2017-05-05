@@ -9,6 +9,7 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	"github.com/openebs/mayaserver/lib/orchprovider"
+	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"github.com/openebs/mayaserver/lib/volume"
 )
 
@@ -98,8 +99,7 @@ type jivaStor struct {
 	jivaProUtil JivaInterface
 
 	// TODO
-	// Deprecate
-	// Will be removed & jivaProUtil will be used instead.
+	// Deprecate in favour of jivaProUtil
 	//
 	// jStorOps abstracts the storage operations of this jivaStor
 	// instance
@@ -200,25 +200,39 @@ func (j *jivaStor) Name() string {
 	return j.name
 }
 
-// Profile sets the persistent volume provisioner profile against this jiva volume
-// provisioner.
+// Profile sets the persistent volume provisioner profile against this jiva
+// volume provisioner.
+//
+// NOTE:
+//    This method is expected to be invoked when pvc is available. In other
+// words this is lazily invoked after the creation of jivaStor.
 func (j *jivaStor) Profile(pvc *v1.PersistentVolumeClaim) (bool, error) {
-	// TODO
-	// logic to build appropriate profile
+	vProfl, err := volProfile.GetVolProProfileByPVC(pvc)
+	if err != nil {
+		return true, err
+	}
 
-	//return j.jivaProUtil.JivaProProfile(volProProfile)
-	return true, nil
+	return j.jivaProUtil.JivaProProfile(vProfl)
 }
 
 // TODO
-// Rename to Reader ??
+// Deprecate in favour of Reader
 //
 // Informer provides a instance of volume.Informer interface.
 // Since jivaStor implements volume.Informer, it returns self.
 //
 // NOTE:
-//    This is a contract implementation of volume.VolumeInterface
+//    This is one of the concrete implementations of volume.VolumeInterface
 func (j *jivaStor) Informer() (volume.Informer, bool) {
+	return j, true
+}
+
+// Reader provides a instance of volume.Reader interface.
+// Since jivaStor implements volume.Reader, it returns self.
+//
+// NOTE:
+//    This is one of the concrete implementations of volume.VolumeInterface
+func (j *jivaStor) Reader() (volume.Reader, bool) {
 	return j, true
 }
 
@@ -244,7 +258,7 @@ func (j *jivaStor) Deleter() (volume.Deleter, bool) {
 }
 
 // TODO
-// Rename to Read ??
+// Deprecate in favour of Read
 //
 // Info provides information on a jiva volume
 //
@@ -256,6 +270,27 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 
 	// Delegate to its provider
 	return j.jStorOps.StorageInfo(pvc)
+}
+
+// Read provides information about a jiva persistent volume
+//
+// NOTE:
+//    This is expected to be invoked after setting the volume provisioner
+// profile
+//
+// NOTE:
+//    This is a concrete implementation of volume.Informer interface
+func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
+	// TODO
+	// Validations of input i.e. claim
+
+	// Delegate to the storage util
+	storOps, supported := j.jivaProUtil.StorageOps()
+	if !supported {
+		return nil, fmt.Errorf("Storage operations not supported in '%s:%s' '%s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	return storOps.ReadStorage(pvc)
 }
 
 // TODO

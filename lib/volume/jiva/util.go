@@ -229,13 +229,14 @@ func (j *jivaUtil) StorageInfo(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVol
 	return storageOrchestrator.StorageInfoReq(pvc)
 }
 
-// ReadStorage fetches details of a jiva persistent volume
+// ReadStorage fetches details of a jiva persistent volume.
+// It gets the appropriate orchestration provider to delegate further execution.
 func (j *jivaUtil) ReadStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
 
 	// TODO
 	// Move the below set of validations to StorageOps()
 	if j.jivaProProfile == nil {
-		return nil, fmt.Errorf("Nil provisioner profile in '%s'", j.Name())
+		return nil, fmt.Errorf("Volume provisioner profile not set in '%s'", j.Name())
 	}
 
 	oName, supported, err := j.jivaProProfile.Orchestrator()

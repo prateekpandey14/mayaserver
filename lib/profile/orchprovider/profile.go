@@ -81,7 +81,7 @@ func GetOrchProviderProfileByName(name string) (OrchProviderProfile, error) {
 	// TODO
 	// Alternatively, search from external discoverable DBs if any
 
-	return nil, nil
+	return nil, fmt.Errorf("GetOrchProviderProfileByName is not yet implemented")
 }
 
 // pvcOrchProviderProfile is a orchestration provider profile that is based on
