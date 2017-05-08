@@ -45,21 +45,15 @@ func GetVolumeProvisioner() (VolumeInterface, error) {
 	return GetVolumeProvisionerByName(v1.VolumeProvisionerRegistry(""))
 }
 
-// GetVolumeProvisioner gets a new instance of the named persistent volume
+// GetVolumeProvisionerByName gets a new instance of the named persistent volume
 // provisioner or nil if the name is unknown.
 func GetVolumeProvisionerByName(name v1.VolumeProvisionerRegistry) (VolumeInterface, error) {
-
-	var err error
 
 	volProvisionerRegMutex.Lock()
 	defer volProvisionerRegMutex.Unlock()
 
 	if string(name) == "" {
-		name, err = getVolumeProvisionerDef()
-	}
-
-	if err != nil {
-		return nil, err
+		name = v1.DefaultVolumeProvisionerName()
 	}
 
 	vpInstFactory, found := volProvisionerRegistry[name]
@@ -74,10 +68,4 @@ func GetVolumeProvisionerByName(name v1.VolumeProvisionerRegistry) (VolumeInterf
 	// The persistent volume provisioner label is decided here. This label is common
 	// to all persistent volume provisioner implementors.
 	return vpInstFactory(string(v1.VolumeProvisionerNameLbl), string(name))
-}
-
-// getVolumeProvisionerDef gets the default name of persistent volume provisioner
-// plugin.
-func getVolumeProvisionerDef() (v1.VolumeProvisionerRegistry, error) {
-	return v1.DefaultVolumeProvisioner, nil
 }

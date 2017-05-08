@@ -107,8 +107,8 @@ const (
 	PVPReqNetworkingLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/req-networking"
 	// Label / Tag for a persistent volume provisioner's replica count
 	PVPReplicaCountLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/replica-count"
-	// Label / Tag for a persistent volume provisioner's replica size
-	PVPReplicaSizeLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/replica-size"
+	// Label / Tag for a persistent volume provisioner's storage size
+	PVPStorageSizeLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/storage-size"
 	// Label / Tag for a persistent volume provisioner's replica IPs
 	PVPReplicaIPsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/replica-ips"
 	// Label / Tag for a persistent volume provisioner's replica image
@@ -117,10 +117,27 @@ const (
 	PVPControllerCountLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-count"
 	// Label / Tag for a persistent volume provisioner's controller image
 	PVPControllerImageLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-image"
-	// Label / Tag for a persistent volume provisioner's controller size
-	PVPControllerSizeLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-size"
 	// Label / Tag for a persistent volume provisioner's controller IPs
 	PVPControllerIPsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-ips"
+)
+
+// VolumeProvsionerDefaults is a typed label to provide default values w.r.t
+// volume provisioner properties.
+type VolumeProvisionerDefaults string
+
+const (
+	// Default value for persistent volume provisioner's controller count
+	PVPControllerCountDef VolumeProvisionerDefaults = "1"
+	// Default value for persistent volume provisioner's replica count
+	PVPReplicaCountDef VolumeProvisionerDefaults = "2"
+	// Default value for persistent volume provisioner's controller image
+	PVPControllerImageDef VolumeProvisionerDefaults = "openebs/jiva:latest"
+	// Default value for persistent volume provisioner's support for replica
+	PVPReqReplicaDef VolumeProvisionerDefaults = "true"
+	// Default value for persistent volume provisioner's replica image
+	PVPReplicaImageDef VolumeProvisionerDefaults = "openebs/jiva:latest"
+	// Default value for persistent volume provisioner's networking support
+	PVPReqNetworkingDef VolumeProvisionerDefaults = "false"
 )
 
 // NameLabel type will be used to identify various maya api service components
@@ -147,6 +164,8 @@ const (
 	// This is used for registering Nomad as an orchestration provider in maya api
 	// server.
 	NomadOrchestrator OrchProviderRegistry = "nomad"
+	// DefaultOrchestrator provides the default orchestration provider
+	DefaultOrchestrator = K8sOrchestrator
 )
 
 // VolumeProvisionerRegistry type will be used to register various maya api
