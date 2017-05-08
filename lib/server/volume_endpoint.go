@@ -7,7 +7,7 @@ import (
 
 	"github.com/openebs/mayaserver/lib/api/v1"
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
-	"github.com/openebs/mayaserver/lib/volume"
+	"github.com/openebs/mayaserver/lib/volumeprovisioner"
 )
 
 func (s *HTTPServer) VolumesRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
@@ -106,7 +106,7 @@ func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request
 	volPlugName := v1jiva.DefaultJivaVolumePluginName
 
 	// Get jiva volume plugin instance which should have been initialized earlier
-	jivaStor, err := volume.GetVolumePlugin(volPlugName, nil, nil)
+	jivaStor, err := volumeprovisioner.GetVolumePlugin(volPlugName, nil, nil)
 
 	// Get jiva volume provisioner from the server
 	jivaProv, ok := jivaStor.Provisioner()
@@ -143,7 +143,7 @@ func (s *HTTPServer) volumeDelete(resp http.ResponseWriter, req *http.Request, v
 	volPlugName := v1jiva.DefaultJivaVolumePluginName
 
 	// Get jiva volume plugin instance which should have been initialized earlier
-	jivaStor, err := volume.GetVolumePlugin(volPlugName, nil, nil)
+	jivaStor, err := volumeprovisioner.GetVolumePlugin(volPlugName, nil, nil)
 
 	// Get jiva volume deleter
 	jivaDel, ok := jivaStor.Deleter()
@@ -184,7 +184,7 @@ func (s *HTTPServer) volumeInfo(resp http.ResponseWriter, req *http.Request, vol
 	volPlugName := v1jiva.DefaultJivaVolumePluginName
 
 	// Get jiva volume plugin instance which should have been initialized earlier
-	jivaStor, err := volume.GetVolumePlugin(volPlugName, nil, nil)
+	jivaStor, err := volumeprovisioner.GetVolumePlugin(volPlugName, nil, nil)
 
 	jivaInfo, ok := jivaStor.Informer()
 	if !ok {
@@ -211,7 +211,7 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 	}
 
 	// Get jiva persistent volume provisioner instance
-	jiva, err := volume.GetVolumeProvisioner()
+	jiva, err := volumeprovisioner.GetVolumeProvisioner()
 	if err != nil {
 		return nil, err
 	}

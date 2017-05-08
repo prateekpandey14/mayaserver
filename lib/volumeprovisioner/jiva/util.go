@@ -17,7 +17,7 @@ import (
 	"github.com/openebs/mayaserver/lib/nethelper"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	vProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	"github.com/openebs/mayaserver/lib/volume"
+	"github.com/openebs/mayaserver/lib/volumeprovisioner"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
@@ -104,7 +104,7 @@ type StorageOps interface {
 type jivaUtil struct {
 	// Orthogonal concerns and their management w.r.t jiva storage
 	// is done via aspect
-	aspect volume.VolumePluginAspect
+	aspect volumeprovisioner.VolumePluginAspect
 
 	// jivaProProfile holds persistent volume provisioner's profile
 	// This can be set lazily.
@@ -116,7 +116,7 @@ type jivaUtil struct {
 //
 // newJivaUtil provides a orchestrator based infrastructure that
 // supports jiva operations
-func newJivaUtil(aspect volume.VolumePluginAspect) (JivaInterface, error) {
+func newJivaUtil(aspect volumeprovisioner.VolumePluginAspect) (JivaInterface, error) {
 	if aspect == nil {
 		return nil, fmt.Errorf("Nil volume plugin aspect was provided")
 	}

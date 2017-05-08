@@ -10,7 +10,7 @@ import (
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	"github.com/openebs/mayaserver/lib/volume"
+	"github.com/openebs/mayaserver/lib/volumeprovisioner"
 )
 
 // The registration logic for jiva persistent volume provisioner plugin
@@ -26,23 +26,23 @@ func init() {
 	// TODO
 	// Remove the deprecated registration style
 	// Deprecated registration style !!
-	volume.RegisterVolumePlugin(
+	volumeprovisioner.RegisterVolumePlugin(
 		// A variant of jiva volume plugin
 		v1jiva.DefaultJivaVolumePluginName,
 		// Below is a functional implementation that holds the initialization
 		// logic of jiva volume plugin
-		func(name string, config io.Reader, aspect volume.VolumePluginAspect) (volume.VolumeInterface, error) {
+		func(name string, config io.Reader, aspect volumeprovisioner.VolumePluginAspect) (volumeprovisioner.VolumeInterface, error) {
 			return newJivaStor(name, config, aspect)
 		})
 
 	// Current/New registration style !!
-	volume.RegisterVolumeProvisioner(
+	volumeprovisioner.RegisterVolumeProvisioner(
 		// Name when jiva is the persistent volume provisioner plugin
 		v1jiva.JivaVolumeProvisionerName,
 
 		// Below is a callback function that creates a new instance of jiva as persistent
 		// volume provisioner plugin
-		func(label, name string) (volume.VolumeInterface, error) {
+		func(label, name string) (volumeprovisioner.VolumeInterface, error) {
 			return newJivaProvisioner(label, name)
 		})
 }
@@ -85,9 +85,9 @@ func (jAspect *JivaStorNomadAspect) DefaultDatacenter() (string, error) {
 // jivaStor is the concrete implementation that implements
 // following interfaces:
 //
-//  1. volume.VolumeInterface interface
-//  2. volume.Provisioner interface
-//  3. volume.Deleter interface
+//  1. volumeprovisioner.VolumeInterface interface
+//  2. volumeprovisioner.Provisioner interface
+//  3. volumeprovisioner.Deleter interface
 type jivaStor struct {
 	// label assigned against this jiva persistent volume provisioner
 	label string
@@ -118,7 +118,7 @@ type jivaStor struct {
 // newJivaStor provides a new instance of jivaStor.
 //
 // This function aligns with VolumePluginFactory function type.
-func newJivaStor(name string, config io.Reader, aspect volume.VolumePluginAspect) (*jivaStor, error) {
+func newJivaStor(name string, config io.Reader, aspect volumeprovisioner.VolumePluginAspect) (*jivaStor, error) {
 
 	glog.Infof("Building new instance of jiva storage '%s'", name)
 
@@ -157,7 +157,7 @@ func newJivaStor(name string, config io.Reader, aspect volume.VolumePluginAspect
 //
 // Note:
 //    This function aligns with the callback function signature
-func newJivaProvisioner(label, name string) (volume.VolumeInterface, error) {
+func newJivaProvisioner(label, name string) (volumeprovisioner.VolumeInterface, error) {
 
 	if label == "" {
 		return nil, fmt.Errorf("Label not provided for jiva persistent volume provisioner instance")
@@ -223,7 +223,7 @@ func (j *jivaStor) Profile(pvc *v1.PersistentVolumeClaim) (bool, error) {
 //
 // NOTE:
 //    This is one of the concrete implementations of volume.VolumeInterface
-func (j *jivaStor) Informer() (volume.Informer, bool) {
+func (j *jivaStor) Informer() (volumeprovisioner.Informer, bool) {
 	return j, true
 }
 
@@ -232,7 +232,7 @@ func (j *jivaStor) Informer() (volume.Informer, bool) {
 //
 // NOTE:
 //    This is one of the concrete implementations of volume.VolumeInterface
-func (j *jivaStor) Reader() (volume.Reader, bool) {
+func (j *jivaStor) Reader() (volumeprovisioner.Reader, bool) {
 	return j, true
 }
 
@@ -244,7 +244,7 @@ func (j *jivaStor) Reader() (volume.Reader, bool) {
 //
 // NOTE:
 //    This is a concrete implementation of volume.VolumeInterface
-func (j *jivaStor) Provisioner() (volume.Provisioner, bool) {
+func (j *jivaStor) Provisioner() (volumeprovisioner.Provisioner, bool) {
 	return j, true
 }
 
@@ -253,7 +253,7 @@ func (j *jivaStor) Provisioner() (volume.Provisioner, bool) {
 //
 // NOTE:
 //    This is a concrete implementation of volume.VolumeInterface
-func (j *jivaStor) Deleter() (volume.Deleter, bool) {
+func (j *jivaStor) Deleter() (volumeprovisioner.Deleter, bool) {
 	return j, true
 }
 

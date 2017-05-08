@@ -11,8 +11,8 @@ import (
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/orchprovider/nomad"
-	"github.com/openebs/mayaserver/lib/volume"
-	"github.com/openebs/mayaserver/lib/volume/jiva"
+	"github.com/openebs/mayaserver/lib/volumeprovisioner"
+	"github.com/openebs/mayaserver/lib/volumeprovisioner/jiva"
 )
 
 // MayaApiServer is a long running stateless daemon that runs
@@ -124,7 +124,7 @@ func (ms *MayaApiServer) BootstrapPlugins() error {
 		Datacenter: v1jiva.DefaultJivaDataCenter,
 	}
 
-	_, err = volume.InitVolumePlugin(v1jiva.DefaultJivaVolumePluginName, "", jivaAspect)
+	_, err = volumeprovisioner.InitVolumePlugin(v1jiva.DefaultJivaVolumePluginName, "", jivaAspect)
 	if err != nil {
 		return err
 	}

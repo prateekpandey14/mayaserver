@@ -3,7 +3,7 @@
 //
 // TODO
 // Deprecate in favour of volume/registry.go
-package volume
+package volumeprovisioner
 
 import (
 	"fmt"

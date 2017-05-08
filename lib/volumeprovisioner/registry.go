@@ -2,7 +2,7 @@
 //
 // NOTE:
 //    This is the new file w.r.t the deprecated volume/plugins.go file
-package volume
+package volumeprovisioner
 
 import (
 	"fmt"
