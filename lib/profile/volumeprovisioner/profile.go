@@ -66,6 +66,16 @@ type VolumeProvisionerProfile interface {
 
 	// Get the IP addresses that needs to be assigned against the replica(s)
 	ReplicaIPs() ([]string, error)
+
+	// Get the count of persistent paths required for all the replicas
+	PersistentPathCount() (int, error)
+
+	// Get the persistent path based on the replica position.
+	//
+	// NOTE:
+	//    `position` is just a parameter that determines a particular replica out
+	// of the total replica count i.e. `rCount`.
+	PersistentPath(position int, rCount int) (string, error)
 }
 
 // GetVolProProfileByPVC will return a specific persistent volume provisioner
@@ -126,7 +136,10 @@ type pvcVolProProfile struct {
 // newPvcVolProProfile provides a new instance of VolumeProvisionerProfile that is
 // based on pvc (i.e. persistent volume claim).
 func newPvcVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	// This does not care if pvc instance is nil
+	if pvc == nil {
+		return nil, fmt.Errorf("Missing PVC in '%s:%s'", v1.PVPProfileNameLbl, v1.PVCProvisionerProfile)
+	}
+
 	return &pvcVolProProfile{
 		pvc: pvc,
 	}, nil
@@ -182,10 +195,6 @@ func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error
 // VSMName gets the name of the VSM
 // Operator must provide this.
 func (pp *pvcVolProProfile) VSMName() (string, error) {
-	if pp.pvc == nil {
-		return "", fmt.Errorf("Missing VSM name in '%s:%s'", pp.Label(), pp.Name())
-	}
-
 	// Extract the VSM name from pvc
 	vsmName := v1.VSMName(pp.pvc.Labels)
 
@@ -198,10 +207,6 @@ func (pp *pvcVolProProfile) VSMName() (string, error) {
 
 // ControllerCount gets the number of controllers
 func (pp *pvcVolProProfile) ControllerCount() (int, error) {
-	if pp.pvc == nil {
-		return v1.DefaultControllerCount(), nil
-	}
-
 	// Extract the controller count from pvc
 	cCount := v1.ControllerCount(pp.pvc.Labels)
 
@@ -219,10 +224,6 @@ func (pp *pvcVolProProfile) ControllerCount() (int, error) {
 
 // ControllerImage gets the controller's image currently its docker image label.
 func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
-	if pp.pvc == nil {
-		return v1.DefaultControllerImage(), true, nil
-	}
-
 	// Extract the controller image from pvc
 	cImg := v1.ControllerImage(pp.pvc.Labels)
 
@@ -236,10 +237,6 @@ func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
 // ReqReplica indicates if replica(s) are required by the persistent volume
 // provisioner
 func (pp *pvcVolProProfile) ReqReplica() bool {
-	if pp.pvc == nil {
-		return v1.DefaultReqReplica()
-	}
-
 	// Extract the replica truthiness (i.e. is replica required) from pvc
 	reqReplica := v1.ReqReplica(pp.pvc.Labels)
 
@@ -252,10 +249,6 @@ func (pp *pvcVolProProfile) ReqReplica() bool {
 
 // ReplicaImage gets the replica's image currently its docker image label.
 func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
-	if pp.pvc == nil {
-		return v1.DefaultReplicaImage(), true, nil
-	}
-
 	// Extract the replica image from pvc
 	rImg := v1.ReplicaImage(pp.pvc.Labels)
 
@@ -280,10 +273,6 @@ func (pp *pvcVolProProfile) StorageSize() (string, error) {
 
 // ReplicaCount get the number of replicas required
 func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
-	if pp.pvc == nil {
-		return v1.DefaultReplicaCount(), nil
-	}
-
 	// Extract the replica count from pvc
 	rCount := v1.ReplicaCount(pp.pvc.Labels)
 
@@ -302,10 +291,6 @@ func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
 // ReqNetworking indicates if any networking related operations are required to
 // be executed by persistent volume provisioner
 func (pp *pvcVolProProfile) ReqNetworking() bool {
-	if pp.pvc == nil {
-		return v1.DefaultReqNetworking()
-	}
-
 	// Extract the networking truthiness (i.e. is networking operations required)
 	// from pvc
 	reqNet := v1.ReqNetworking(pp.pvc.Labels)
@@ -323,10 +308,6 @@ func (pp *pvcVolProProfile) ReqNetworking() bool {
 // NOTE:
 //    There is no default assignment of IPs
 func (pp *pvcVolProProfile) ControllerIPs() ([]string, error) {
-	if pp.pvc == nil {
-		return nil, nil
-	}
-
 	// Extract the controller IPs from pvc
 	cIPs := v1.ControllerIPs(pp.pvc.Labels)
 
@@ -349,10 +330,6 @@ func (pp *pvcVolProProfile) ControllerIPs() ([]string, error) {
 // NOTE:
 //    There is no default assignment of IPs
 func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
-	if pp.pvc == nil {
-		return nil, nil
-	}
-
 	// Extract the controller IPs from pvc
 	rIPs := v1.ReplicaIPs(pp.pvc.Labels)
 
@@ -367,6 +344,64 @@ func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
 	}
 
 	return rIPsArr, nil
+}
+
+// PersistentPathCount gets the count of persistent paths required for all the
+// replicas.
+//
+// NOTE:
+//    The count needs to be equal to no of replicas.
+func (pp *pvcVolProProfile) PersistentPathCount() (int, error) {
+	// Extract the persistent path count from pvc
+	pCount := v1.PersistentPathCount(pp.pvc.Labels)
+
+	if pCount == "" {
+		return v1.DefaultPersistentPathCount(), nil
+	}
+
+	iPCount, err := strconv.Atoi(pCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return iPCount, nil
+}
+
+// PersistentPath gets the persistent path based on the replica position.
+//
+// NOTE:
+//    `position` is just a positional value that determines a particular replica
+// out of the total replica count i.e. rCount.
+func (pp *pvcVolProProfile) PersistentPath(position int, rCount int) (string, error) {
+	if rCount <= 0 {
+		return "", fmt.Errorf("Invalid replica count '%d' provided", rCount)
+	}
+
+	if position <= 0 {
+		return "", fmt.Errorf("Invalid persistent path index '%d' provided", position)
+	}
+
+	vsm, err := pp.VSMName()
+	if err != nil {
+		return "", err
+	}
+
+	// Extract the persistent path from pvc
+	pPath := v1.JivaPersistentPath(pp.pvc.Labels, vsm, position)
+
+	if pPath == "" {
+		return v1.DefaultJivaPersistentPath(vsm, position), nil
+	}
+
+	pPathArr := strings.Split(pPath, ",")
+
+	if len(pPathArr) != rCount {
+		return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
+	}
+
+	iPPath := strings.TrimSpace(pPathArr[position-1])
+
+	return iPPath, nil
 }
 
 // srVolProProfile represents a single replica based persistent volume
@@ -389,27 +424,57 @@ func (srp *srVolProProfile) ReqReplica() bool {
 	return util.CheckTruthy("true")
 }
 
-// ReplicaCount gets the number of replicas required. In most of the cases, it
-// returns 1. However, if replica count is specified in pvc then the specs value
-// is considered.
+// ReplicaCount gets the number of replicas required. In this case it returns 1
+// always.
 func (srp *srVolProProfile) ReplicaCount() (int, error) {
-	if srp.pvc == nil {
-		return 1, nil
+	return 1, nil
+}
+
+// PersistentPathCount gets the count of persistent paths required for all the
+// replicas. In this case it returns 1 always.
+//
+// NOTE:
+//    The count needs to be equal to no of replicas.
+func (srp *srVolProProfile) PersistentPathCount() (int, error) {
+	return 1, nil
+}
+
+// PersistentPath gets the persistent path based on the position i.e. replica
+// position.
+//
+// NOTE:
+//    `position` is just a positional value that determines a particular replica
+// out of the total replica count i.e. rCount.
+func (srp *srVolProProfile) PersistentPath(position int, rCount int) (string, error) {
+	if rCount != 1 {
+		return "", fmt.Errorf("Invalid replica count. Expected '1' Provided '%d'", rCount)
 	}
 
-	// Extract the replica count from pvc
-	rCount := v1.ReplicaCount(srp.pvc.Labels)
-
-	if rCount == "" {
-		return 1, nil
+	if position != 1 {
+		return "", fmt.Errorf("Invalid persistent path index. Expected '0' Provided '%d'", position)
 	}
 
-	iRCount, err := strconv.Atoi(rCount)
+	vsm, err := srp.VSMName()
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	return iRCount, nil
+	// Extract the persistent path from pvc
+	pPath := v1.JivaPersistentPath(srp.pvc.Labels, vsm, position)
+
+	if pPath == "" {
+		return v1.DefaultJivaPersistentPath(vsm, position), nil
+	}
+
+	pPathArr := strings.Split(pPath, ",")
+
+	if len(pPathArr) != rCount {
+		return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
+	}
+
+	iPPath := strings.TrimSpace(pPathArr[position-1])
+
+	return iPPath, nil
 }
 
 // etcdVolProProfile represents a generic volume provisioner profile whose

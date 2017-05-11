@@ -24,7 +24,7 @@ type K8sUtilInterface interface {
 //    This abstraction makes use of K8s's client-go package.
 type K8sClients interface {
 	// ClientSet is capable to communicate with an in-cluster K8s
-	ClientSet() (*kubernetes.Clientset, error)
+	InClusterClientSet() (*kubernetes.Clientset, error)
 	// ClientSet is capable to communicate with an outside this cluster's K8s
 	OutClusterClientSet() (*kubernetes.Clientset, error)
 }
@@ -62,7 +62,7 @@ func (k *k8sUtil) K8sClients() (K8sClients, bool) {
 
 // ClientSet is used to initialize and return a new http client capable
 // of invoking K8s APIs.
-func (k *k8sUtil) ClientSet() (*kubernetes.Clientset, error) {
+func (k *k8sUtil) InClusterClientSet() (*kubernetes.Clientset, error) {
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -70,7 +70,7 @@ func (k *k8sUtil) ClientSet() (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
-	// creates the clientset
+	// creates the in cluster clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func GetInClusterCS() (*kubernetes.Clientset, error) {
 
 	kc, _ := k8sUtl.K8sClients()
 
-	cs, err := kc.ClientSet()
+	cs, err := kc.InClusterClientSet()
 	if err != nil {
 		return nil, err
 	}

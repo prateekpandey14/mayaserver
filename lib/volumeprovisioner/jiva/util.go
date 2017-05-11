@@ -74,7 +74,7 @@ type StorageOps interface {
 	// Deprecate in favour of AddStorage
 	ProvisionStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
-	AddStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+	AddStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
 
 	// Delete operation
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
@@ -322,7 +322,7 @@ func (j *jivaUtil) ProvisionStorage(pvc *v1.PersistentVolumeClaim) (*v1.Persiste
 }
 
 // AddStorage adds a jiva persistent volume
-func (j *jivaUtil) AddStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
+func (j *jivaUtil) AddStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
 
 	// TODO
 	// Move the below set of validations to StorageOps() method

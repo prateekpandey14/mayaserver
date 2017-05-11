@@ -2,6 +2,7 @@ package v1
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/openebs/mayaserver/lib/util"
 )
@@ -10,7 +11,8 @@ import (
 // count if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ReplicaCount(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -22,9 +24,6 @@ func ReplicaCount(profileMap map[string]string) string {
 
 // DefaultReplicaCount will fetch the default value of persistent volume
 // provisioner replica count
-//
-// NOTE:
-//    This function need not bother about any validations
 func DefaultReplicaCount() int {
 	iRCount, _ := strconv.Atoi(string(PVPReplicaCountDef))
 	return iRCount
@@ -34,7 +33,8 @@ func DefaultReplicaCount() int {
 // network address if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func NetworkAddr(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -46,18 +46,12 @@ func NetworkAddr(profileMap map[string]string) string {
 
 // NetworkAddrDef will fetch the default value of orchestration provider network
 // address.
-//
-// NOTE:
-//    This function need not bother about any validations
 func NetworkAddrDef() string {
 	return string(OPNetworkAddrDef)
 }
 
 // NetworkSubnetDef will fetch the default value of orchestration provider
 // network subnet.
-//
-// NOTE:
-//    This function need not bother about any validations
 func NetworkSubnetDef() string {
 	return string(OPNetworkSubnetDef)
 }
@@ -66,7 +60,8 @@ func NetworkSubnetDef() string {
 // IPs if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ReplicaIPs(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -80,7 +75,8 @@ func ReplicaIPs(profileMap map[string]string) string {
 // IPs if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ControllerIPs(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -94,7 +90,8 @@ func ControllerIPs(profileMap map[string]string) string {
 // support if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ReqNetworking(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -117,7 +114,8 @@ func DefaultReqNetworking() bool {
 // size if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func StorageSize(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -131,7 +129,8 @@ func StorageSize(profileMap map[string]string) string {
 // image if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ReplicaImage(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -154,7 +153,8 @@ func DefaultReplicaImage() string {
 // support if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ReqReplica(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -166,9 +166,6 @@ func ReqReplica(profileMap map[string]string) string {
 
 // DefaultReqReplica will fetch the default value for persistent volume
 // replica support.
-//
-// NOTE:
-//    This function need not bother about any validations
 func DefaultReqReplica() bool {
 	// Extract replica support i.e. is replica required
 	return util.CheckTruthy(string(PVPReqReplicaDef))
@@ -178,7 +175,8 @@ func DefaultReqReplica() bool {
 // controller image if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ControllerImage(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -190,9 +188,6 @@ func ControllerImage(profileMap map[string]string) string {
 
 // DefaultControllerImage will fetch the default value for persistent
 // volume controller image
-//
-// NOTE:
-//    This function need not bother about any validations
 func DefaultControllerImage() string {
 	return string(PVPControllerImageDef)
 }
@@ -201,7 +196,8 @@ func DefaultControllerImage() string {
 // controller count if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func ControllerCount(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -213,9 +209,6 @@ func ControllerCount(profileMap map[string]string) string {
 
 // DefaultControllerCount will fetch the default value for persistent
 // volume controller count
-//
-// NOTE:
-//    This function need not bother about any validations
 func DefaultControllerCount() int {
 	iCCount, _ := strconv.Atoi(string(PVPControllerCountDef))
 	return iCCount
@@ -225,7 +218,8 @@ func DefaultControllerCount() int {
 // VSM name if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func VSMName(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -239,7 +233,8 @@ func VSMName(profileMap map[string]string) string {
 // orchestrator profile name if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func OrchProfileName(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -253,7 +248,8 @@ func OrchProfileName(profileMap map[string]string) string {
 // namespace if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func NS(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -273,9 +269,6 @@ func NSDef() string {
 
 // PodName will fetch the value specified against persistent volume
 // VSM name if available otherwise will return blank.
-//
-// NOTE:
-//    This function need not bother about any validations
 func PodName(profileMap map[string]string) string {
 	// Extract VSM name
 	return VSMName(profileMap)
@@ -285,7 +278,8 @@ func PodName(profileMap map[string]string) string {
 // in-cluster flag if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func InCluster(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -299,7 +293,8 @@ func InCluster(profileMap map[string]string) string {
 // in-cluster flag.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func InClusterDef() string {
 	return string(OPInClusterDef)
 }
@@ -308,7 +303,8 @@ func InClusterDef() string {
 // profile if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func VolumeProvisionerProfileName(profileMap map[string]string) string {
 	if profileMap == nil {
 		return ""
@@ -323,7 +319,8 @@ func VolumeProvisionerProfileName(profileMap map[string]string) string {
 // service
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func DefaultVolumeProvisionerName() VolumeProvisionerRegistry {
 	return DefaultVolumeProvisioner
 }
@@ -332,7 +329,8 @@ func DefaultVolumeProvisionerName() VolumeProvisionerRegistry {
 // plugin used to cater the provisioning requests to maya api service
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func DefaultOrchestratorName() OrchProviderRegistry {
 	return DefaultOrchestrator
 }
@@ -341,7 +339,8 @@ func DefaultOrchestratorName() OrchProviderRegistry {
 // volume's orchestrator name if available otherwise will return blank.
 //
 // NOTE:
-//    This function need not bother about any validations
+//    This utility function does not validate & just returns if not capable of
+// performing
 func OrchestratorName(profileMap map[string]string) OrchProviderRegistry {
 	if profileMap == nil {
 		return OrchProviderRegistry("")
@@ -349,4 +348,128 @@ func OrchestratorName(profileMap map[string]string) OrchProviderRegistry {
 
 	// Extract orchestrator name
 	return OrchProviderRegistry(profileMap[string(OrchestratorNameLbl)])
+}
+
+// DefaultJivaISCSIPort will provide the port required to make ISCSI based
+// connections
+func DefaultJivaISCSIPort() int32 {
+	iscsiPort, _ := strconv.Atoi(string(JivaISCSIPortDef))
+	return int32(iscsiPort)
+}
+
+// DefaultJivaAPIPort will provide the port required for management of
+// persistent volume
+func DefaultJivaAPIPort() int32 {
+	apiPort, _ := strconv.Atoi(string(JivaAPIPortDef))
+	return int32(apiPort)
+}
+
+// DefaultPersistentPathCount will provide the default count of persistent
+// paths required during provisioning.
+func DefaultPersistentPathCount() int {
+	pCount, _ := strconv.Atoi(string(PVPPersistentPathCountDef))
+	return pCount
+}
+
+// PersistentPathCount will fetch the value specified against persistent volume
+// persistent path count if available otherwise will return blank.
+//
+// NOTE:
+//    This utility function does not validate & just returns if not capable of
+// performing
+func PersistentPathCount(profileMap map[string]string) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract persistent path count
+	return profileMap[string(PVPPersistentPathCountLbl)]
+}
+
+// JivaPersistentPath will fetch the value specified against persistent volume
+// persistent host path if available otherwise will return blank.
+//
+// NOTE:
+//    This utility function does not validate & just returns if not capable of
+// performing
+func JivaPersistentPath(profileMap map[string]string, vsm string, position int) string {
+	if profileMap == nil {
+		return ""
+	}
+
+	// Extract persistent path count
+	return profileMap[string(PVPPersistentPathLbl)] + "/" + vsm + string(JivaPersistentMountPathDef) + string(position)
+}
+
+// TODO
+// Move this to api/v1/jiva/util.go
+//
+// DefaultJivaPersistentPath provides the default persistent host path based on the
+// name of the VSM & replica position
+func DefaultJivaPersistentPath(vsm string, position int) string {
+	return string(JivaPersistentPathDef) + "/" + vsm + string(JivaPersistentMountPathDef) + string(position)
+}
+
+// MakeOrDefJivaReplicaArgs will set the placeholders in jiva replica args with
+// their appropriate runtime values.
+//
+// NOTE:
+//    The defaults will be set if the replica args are not available
+//
+// NOTE:
+//    This utility function does not validate & just returns if not capable of
+// performing
+func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []string {
+	if profileMap == nil || strings.TrimSpace(ctrlIP) == "" {
+		return nil
+	}
+
+	// Extract the runtime values
+	storSize := profileMap[string(PVPStorageSizeLbl)]
+	if storSize == "" {
+		storSize = string(JivaStorSizeDef)
+	}
+
+	repArgs := make([]string, len(JivaReplicaArgs))
+
+	for _, rArg := range JivaReplicaArgs {
+		rArg = strings.Replace(rArg, string(JivaCtrlIPHolder), ctrlIP, 1)
+		rArg = strings.Replace(rArg, string(JivaStorageSizeHolder), storSize, 1)
+		repArgs = append(repArgs, rArg)
+	}
+
+	return repArgs
+}
+
+// DefaultJivaMountPath provides the default mount path for jiva based persistent
+// volumes
+func DefaultJivaMountPath() string {
+	return string(JivaPersistentMountPathDef)
+}
+
+// DefaultJivaMountName provides the default mount path name for jiva based
+// persistent volumes
+func DefaultJivaMountName() string {
+	return string(JivaPersistentMountNameDef)
+}
+
+// DefaultJivaReplicaPort1 provides the default port for jiva based
+// persistent volume replicas
+func DefaultJivaReplicaPort1() int32 {
+	p, _ := strconv.Atoi(string(JivaReplicaPortOneDef))
+	return int32(p)
+}
+
+// DefaultJivaReplicaPort2 provides the default port for jiva based
+// persistent volume replicas
+func DefaultJivaReplicaPort2() int32 {
+	p, _ := strconv.Atoi(string(JivaReplicaPortTwoDef))
+	return int32(p)
+}
+
+// DefaultJivaReplicaPort3 provides the default port for jiva based
+// persistent volume replicas
+func DefaultJivaReplicaPort3() int32 {
+	p, _ := strconv.Atoi(string(JivaReplicaPortThreeDef))
+	return int32(p)
 }

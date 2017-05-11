@@ -34,7 +34,7 @@ type VolumeInterface interface {
 	Profile(*v1.PersistentVolumeClaim) (bool, error)
 
 	// TODO
-	// Rename to Creator ??
+	// Deprecate in favour of Adder
 	//
 	// Provisioner gets the instance capable of provisioning volumes w.r.t this
 	// persistent volume provisioner.
@@ -70,6 +70,14 @@ type VolumeInterface interface {
 	//    Will return false if providing persistent volume information is not
 	// supported by this persistent volume provisioner.
 	Reader() (Reader, bool)
+
+	// Adder gets the instance capable of creating a persistent volume
+	// w.r.t this persistent volume provisioner.
+	//
+	// Note:
+	//    Will return false if creating persistent volume is not
+	// supported by this persistent volume provisioner.
+	Adder() (Adder, bool)
 }
 
 // TODO
@@ -92,13 +100,20 @@ type Reader interface {
 }
 
 // TODO
-// Rename to Creator ??
+// Deprecate in favour of Adder
 //
 // Provisioner interface abstracts creation of volume from a persistent volume
 // provisioner.
 type Provisioner interface {
 	// Provision tries to create a volume of a persistent volume provisioner.
 	Provision(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
+}
+
+// Adder interface abstracts creation of persistent volume from a persistent
+// volume provisioner.
+type Adder interface {
+	// Add creates a new persistent volume
+	Add(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
 }
 
 // Deleter interface abstracts deletion of volume of a persistent volume

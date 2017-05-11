@@ -107,6 +107,8 @@ const (
 	PVPReqNetworkingLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/req-networking"
 	// Label / Tag for a persistent volume provisioner's replica count
 	PVPReplicaCountLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/replica-count"
+	// Label / Tag for a persistent volume provisioner's persistent path count
+	PVPPersistentPathCountLbl VolumeProvisionerProfileLabel = PVPReplicaCountLbl
 	// Label / Tag for a persistent volume provisioner's storage size
 	PVPStorageSizeLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/storage-size"
 	// Label / Tag for a persistent volume provisioner's replica IPs
@@ -119,6 +121,8 @@ const (
 	PVPControllerImageLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-image"
 	// Label / Tag for a persistent volume provisioner's controller IPs
 	PVPControllerIPsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-ips"
+	// Label / Tag for a persistent volume provisioner's persistent path
+	PVPPersistentPathLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistent-path"
 )
 
 // VolumeProvsionerDefaults is a typed label to provide default values w.r.t
@@ -130,6 +134,9 @@ const (
 	PVPControllerCountDef VolumeProvisionerDefaults = "1"
 	// Default value for persistent volume provisioner's replica count
 	PVPReplicaCountDef VolumeProvisionerDefaults = "2"
+	// Default value for persistent volume provisioner's persistent path count
+	// This should be equal to persistent volume provisioner's replica count
+	PVPPersistentPathCountDef VolumeProvisionerDefaults = PVPReplicaCountDef
 	// Default value for persistent volume provisioner's controller image
 	PVPControllerImageDef VolumeProvisionerDefaults = "openebs/jiva:latest"
 	// Default value for persistent volume provisioner's support for replica
@@ -199,4 +206,146 @@ const (
 	// This is the name of PVC as persistent volume provisioner profile
 	// This is used for labelling PVC as a persistent volume provisioner profile
 	PVCProvisionerProfile VolumeProvisionerProfileRegistry = "pvc"
+)
+
+// TODO
+// Move these to jiva folder
+//
+// JivaAnnotations will be used to provide filtering options like
+// named-labels, named-suffix, named-prefix, constants, etc.
+//
+// NOTE:
+//    These value(s) are generally used / remembered by the consumers of
+// maya api service
+type JivaAnnotations string
+
+// TODO
+// Rename these const s.t. they start with Jiva as Key Word
+const (
+	// VSMIdentifier is used to filter vsm by name
+	VSMIdentifier JivaAnnotations = "vsm"
+
+	// VSMSelectorPrefix is used to filter vsm by name when
+	// selector logic is used
+	VSMSelectorPrefix JivaAnnotations = VSMIdentifier + "="
+
+	// ControllerSuffix is used as a suffix for persistent volume controller
+	// related names
+	ControllerSuffix JivaAnnotations = "-ctrl"
+
+	// JivaReplicaSuffix is used as a suffix for persistent volume replica
+	// related names
+	JivaReplicaSuffix JivaAnnotations = "-rep"
+
+	// ServiceSuffix is used as a suffix for persistent volume controller
+	// related names
+	ServiceSuffix JivaAnnotations = "-svc"
+
+	// ControllerSuffix is used as a suffix for persistent volume container
+	// related names
+	ContainerSuffix JivaAnnotations = "-con"
+
+	// PortNameISCSI is the name given to iscsi ports
+	PortNameISCSI JivaAnnotations = "iscsi"
+
+	// PortNameAPI is the name given to api ports
+	PortNameAPI JivaAnnotations = "api"
+
+	// JivaCtrlIPHolder is used as a placeholder for persistent volume controller's
+	// IP address
+	//
+	// NOTE:
+	//    This is replaced at runtime
+	JivaCtrlIPHolder JivaAnnotations = "__CTRL_IP__"
+
+	// JivaStorageSizeHolder is used as a placeholder for persistent volume's
+	// storage capacity
+	//
+	// NOTE:
+	//    This is replaced at runtime
+	JivaStorageSizeHolder JivaAnnotations = "__STOR_SIZE__"
+)
+
+// JivaDefaults is a typed label to provide default values to Jiva based
+// persistent volume properties
+type JivaDefaults string
+
+const (
+	// JivaControllerFrontendDef is used to provide default frontend for jiva
+	// persistent volume controller
+	JivaControllerFrontendDef JivaDefaults = "gotgt"
+
+	// JivaVolumeNameDef is used to provide default name for jiva
+	// based persistent volumes
+	JivaVolumeNameDef JivaDefaults = "jvol"
+
+	// JivaISCSIPortDef is used to provide default iscsi port value for jiva
+	// based persistent volumes
+	JivaISCSIPortDef JivaDefaults = "3260"
+
+	// JivaPersistentMountPathDef is the default mount path used by jiva based
+	// persistent volumes
+	JivaPersistentMountPathDef JivaDefaults = "/openebs"
+
+	// JivaPersistentMountNameDef is the default mount path name used by jiva based
+	// persistent volumes
+	JivaPersistentMountNameDef JivaDefaults = "openebs"
+
+	// JivaAPIPortDef is used to provide management port for persistent volume
+	// storage
+	JivaAPIPortDef JivaDefaults = "9501"
+
+	// JivaReplicaPortOneDef is used to provide port for jiva based persistent
+	// volume replica
+	JivaReplicaPortOneDef JivaDefaults = "9502"
+
+	// JivaReplicaPortTwoDef is used to provide port for jiva based persistent
+	// volume replica
+	JivaReplicaPortTwoDef JivaDefaults = "9503"
+
+	// JivaReplicaPortThreeDef is used to provide port for jiva based persistent
+	// volume replica
+	JivaReplicaPortThreeDef JivaDefaults = "9504"
+
+	// JivaPersistentPathDef is used to set default value for
+	// persistent volume's persist path
+	JivaPersistentPathDef JivaDefaults = "/tmp"
+
+	// JivaStorSizeDef is used to set default value for
+	// persistent volume's persist path
+	JivaStorSizeDef JivaDefaults = "1G"
+)
+
+// These will be used to provide array based constants that are
+// related to jiva volume provisioner
+var (
+	// JivaCtrlCmd is the command used to start jiva controller
+	JivaCtrlCmd = []string{"launch"}
+
+	// JivaCtrlArgs is the set of arguments provided to JivaCtrlCmd
+	JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameDef)}
+
+	// JivaReplicaCmd is the command used to start jiva replica
+	JivaReplicaCmd = []string{"launch"}
+
+	// JivaReplicaArgs is the set of arguments provided to JivaReplicaCmd
+	JivaReplicaArgs = []string{"replica", "--frontendIP", string(JivaCtrlIPHolder), "--size", string(JivaStorageSizeHolder), string(JivaPersistentMountPathDef)}
+)
+
+// TODO
+// Move these to k8s folder
+//
+// K8sAnnotations will be used to provide string based constants that are
+// related to kubernetes as orchestration provider
+type K8sAnnotations string
+
+const (
+	// K8sKindDeployment is used to state the k8s Deployment(s)
+	K8sKindDeployment K8sAnnotations = "Deployment"
+	// K8sKindService is used to state the k8s Service(s)
+	K8sKindService K8sAnnotations = "Service"
+	// K8sServiceVersion is used to state the k8s Service version
+	K8sServiceVersion K8sAnnotations = "v1"
+	// K8sPodVersion is used to state the k8s Pod version
+	K8sPodVersion K8sAnnotations = "v1"
 )

@@ -236,6 +236,15 @@ func (j *jivaStor) Reader() (volumeprovisioner.Reader, bool) {
 	return j, true
 }
 
+// Adder provides a instance of volume.Adder interface.
+// Since jivaStor implements volume.Adder, it returns self.
+//
+// NOTE:
+//    This is one of the concrete implementations of volume.VolumeInterface
+func (j *jivaStor) Adder() (volumeprovisioner.Adder, bool) {
+	return j, true
+}
+
 // TODO
 // Rename to Creator ??
 //
@@ -281,6 +290,27 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 // NOTE:
 //    This is a concrete implementation of volume.Informer interface
 func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
+	// TODO
+	// Validations of input i.e. claim
+
+	// Delegate to the storage util
+	storOps, supported := j.jivaProUtil.StorageOps()
+	if !supported {
+		return nil, fmt.Errorf("Storage operations not supported in '%s:%s' '%s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	return storOps.ReadStorage(pvc)
+}
+
+// Add creates a new jiva persistent volume
+//
+// NOTE:
+//    This is expected to be invoked after setting the volume provisioner
+// profile
+//
+// NOTE:
+//    This is a concrete implementation of volume.Adder interface
+func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
 	// TODO
 	// Validations of input i.e. claim
 

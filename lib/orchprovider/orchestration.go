@@ -109,11 +109,17 @@ type StoragePlacements interface {
 type StorageOps interface {
 
 	// AddStorage will add persistent volume running as containers
-	AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+	// TODO
+	//    Use VSM as the return type than *v1.PersistentVolumeList
+	AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
 
 	// DeleteStorage will remove the persistent volume
+	// TODO
+	//    Use VSM as the return type than *v1.PersistentVolumeList
 	DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
 
 	// ReadStorage will fetch information about the persistent volume
+	// TODO
+	//    Use VSM as the return type than *v1.PersistentVolumeList
 	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
 }
