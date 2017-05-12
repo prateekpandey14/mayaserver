@@ -44,7 +44,7 @@ type k8sOrchestrator struct {
 	// label specified to this orchestrator
 	label v1.NameLabel
 
-	// Name of the orchestrator as registered in the registry
+	// name of the orchestrator as registered in the registry
 	name v1.OrchProviderRegistry
 }
 
