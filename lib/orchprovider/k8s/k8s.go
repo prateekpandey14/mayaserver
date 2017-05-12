@@ -46,6 +46,10 @@ type k8sOrchestrator struct {
 
 	// name of the orchestrator as registered in the registry
 	name v1.OrchProviderRegistry
+
+	// util provides an instance which is capable of executing low level
+	// kubernetes tasks
+	util K8sUtilInterface
 }
 
 // NewK8sOrchestrator provides a new instance of K8sOrchestrator.
@@ -61,9 +65,15 @@ func NewK8sOrchestrator(label v1.NameLabel, name v1.OrchProviderRegistry) (orchp
 		return nil, fmt.Errorf("Name not found while building k8s orchestrator")
 	}
 
+	util, err := newK8sUtil()
+	if err != nil {
+		return nil, err
+	}
+
 	return &k8sOrchestrator{
 		label: label,
 		name:  name,
+		util:  util,
 	}, nil
 }
 
@@ -110,15 +120,13 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 	// provisioner with k8s orchestrator
 
 	// create k8s pod of persistent volume controller
-	//ctrlPod, err := CreateControllerPod(volProProfile)
-	_, err := CreateControllerPod(volProProfile)
+	_, err := k.createControllerPod(volProProfile)
 	if err != nil {
 		return nil, err
 	}
 
 	// create k8s service of persistent volume controller
-	//ctrlSvc, err := CreateControllerService(volProProfile)
-	_, err = CreateControllerService(volProProfile)
+	_, err = k.createControllerService(volProProfile)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -129,7 +137,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 
 	// TODO
 	// Get the persistent volume controller service name & IP address
-	_, ctrlIP, err := GetControllerService(volProProfile)
+	_, ctrlIP, err := k.GetControllerService(volProProfile)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -144,7 +152,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, nil
 	}
 
-	_, err = CreateReplicaPods(volProProfile, ctrlIP)
+	_, err = k.CreateReplicaPods(volProProfile, ctrlIP)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -163,7 +171,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 
 // ReadStorage will fetch information about the persistent volume
 func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
-	cs, ns, err := GetK8sCS(volProProfile)
+	cs, ns, err := k.getK8sCS(volProProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -226,9 +234,9 @@ func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, b
 	return nil, false
 }
 
-// GetK8sCS fetches the relevant k8s clientset & pod namespace required for
+// getK8sCS fetches the relevant k8s clientset & pod namespace required for
 // subsequent k8s executions
-func GetK8sCS(volProProfile volProfile.VolumeProvisionerProfile) (*kubernetes.Clientset, string, error) {
+func (k *k8sOrchestrator) getK8sCS(volProProfile volProfile.VolumeProvisionerProfile) (*kubernetes.Clientset, string, error) {
 	// Fetch pvc from volume provisioner profile
 	pvc, err := volProProfile.PVC()
 	if err != nil {
@@ -248,7 +256,12 @@ func GetK8sCS(volProProfile volProfile.VolumeProvisionerProfile) (*kubernetes.Cl
 	}
 
 	// Fetch appropriate kubernetes clientset
-	cs, err := GetClusterCS(isInCluster)
+	kc, supported := k.util.K8sClients()
+	if !supported {
+		return nil, "", fmt.Errorf("K8s client not supported by '%s'", k.util.Name())
+	}
+
+	cs, err := kc.GetClusterCS(isInCluster)
 	if err != nil {
 		return nil, "", err
 	}
@@ -262,9 +275,9 @@ func GetK8sCS(volProProfile volProfile.VolumeProvisionerProfile) (*kubernetes.Cl
 	return cs, ns, nil
 }
 
-// CreateControllerPod creates a persistent volume controller deployment in
+// createControllerPod creates a persistent volume controller deployment in
 // kubernetes
-func CreateControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Pod, error) {
+func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Pod, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -281,7 +294,7 @@ func CreateControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8
 	}
 
 	// fetch k8s clientset & namespace
-	cs, ns, err := GetK8sCS(volProProfile)
+	cs, ns, err := k.getK8sCS(volProProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +337,7 @@ func CreateControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8
 
 // CreateReplicaPods creates one or more persistent volume replica(s)
 // deployment in Kubernetes
-func CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sCv1.Pod, error) {
+func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sCv1.Pod, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -355,7 +368,7 @@ func CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP
 	}
 
 	for i := 1; i <= rCount; i++ {
-		_, err := createReplicaPod(volProProfile, ctrlIP, rImg, vsm, i, rCount)
+		_, err := k.createReplicaPod(volProProfile, ctrlIP, rImg, vsm, i, rCount)
 		if err != nil {
 			return nil, err
 		}
@@ -366,9 +379,9 @@ func CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP
 }
 
 // CreateReplicaPod creates a persistent volume replica deployment in Kubernetes
-func createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string, rImg string, vsm string, position int, rCount int) (*k8sCv1.Pod, error) {
+func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string, rImg string, vsm string, position int, rCount int) (*k8sCv1.Pod, error) {
 	// fetch k8s clientset & namespace
-	cs, ns, err := GetK8sCS(volProProfile)
+	cs, ns, err := k.getK8sCS(volProProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -445,9 +458,9 @@ func createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP 
 	return cs.CoreV1().Pods(ns).Create(rep)
 }
 
-// CreateControllerService creates a persistent volume controller service in
+// createControllerService creates a persistent volume controller service in
 // kubernetes
-func CreateControllerService(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Service, error) {
+func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Service, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -455,7 +468,7 @@ func CreateControllerService(volProProfile volProfile.VolumeProvisionerProfile) 
 	}
 
 	// fetch k8s clientset & namespace
-	cs, ns, err := GetK8sCS(volProProfile)
+	cs, ns, err := k.getK8sCS(volProProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +506,7 @@ func CreateControllerService(volProProfile volProfile.VolumeProvisionerProfile) 
 
 // GetControllerService fetches the service name & service IP address
 // of the persistent volume controller
-func GetControllerService(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
+func (k *k8sOrchestrator) GetControllerService(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -501,7 +514,7 @@ func GetControllerService(volProProfile volProfile.VolumeProvisionerProfile) (st
 	}
 
 	// fetch k8s clientset & namespace
-	cs, ns, err := GetK8sCS(volProProfile)
+	cs, ns, err := k.getK8sCS(volProProfile)
 	if err != nil {
 		return "", "", err
 	}

@@ -23,10 +23,10 @@ type K8sUtilInterface interface {
 // NOTE:
 //    This abstraction makes use of K8s's client-go package.
 type K8sClients interface {
+
 	// ClientSet is capable to communicate with an in-cluster K8s
-	InClusterClientSet() (*kubernetes.Clientset, error)
-	// ClientSet is capable to communicate with an outside this cluster's K8s
-	OutClusterClientSet() (*kubernetes.Clientset, error)
+	// or outside the cluster depending on the passed flag.
+	GetClusterCS(bool) (*kubernetes.Clientset, error)
 }
 
 // k8sUtil provides the concrete implementation for below interfaces:
@@ -60,9 +60,19 @@ func (k *k8sUtil) K8sClients() (K8sClients, bool) {
 	return k, true
 }
 
+// GetClusterCS is a utility function to get clientset capable of communicating
+// with k8s APIs.
+func (k *k8sUtil) GetClusterCS(incluster bool) (*kubernetes.Clientset, error) {
+	if incluster {
+		return k.inClusterClientSet()
+	} else {
+		return k.outClusterClientSet()
+	}
+}
+
 // ClientSet is used to initialize and return a new http client capable
 // of invoking K8s APIs.
-func (k *k8sUtil) InClusterClientSet() (*kubernetes.Clientset, error) {
+func (k *k8sUtil) inClusterClientSet() (*kubernetes.Clientset, error) {
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -81,52 +91,6 @@ func (k *k8sUtil) InClusterClientSet() (*kubernetes.Clientset, error) {
 
 // OutClusterClientSet is used to initialize and return a new http client capable
 // of invoking outside the cluster K8s APIs.
-func (k *k8sUtil) OutClusterClientSet() (*kubernetes.Clientset, error) {
+func (k *k8sUtil) outClusterClientSet() (*kubernetes.Clientset, error) {
 	return nil, fmt.Errorf("OutClusterClientSet not supported in '%s'", k.Name())
-}
-
-// GetClusterCS is a utility function to get clientset capable of communicating
-// with k8s APIs.
-func GetClusterCS(incluster bool) (*kubernetes.Clientset, error) {
-	if incluster {
-		return GetInClusterCS()
-	} else {
-		return GetOutClusterCS()
-	}
-}
-
-// GetInClusterCS is a utility function to get clientset capable of communicating
-// with k8s on the same cluster.
-func GetInClusterCS() (*kubernetes.Clientset, error) {
-	k8sUtl, err := newK8sUtil()
-	if err != nil {
-		return nil, err
-	}
-
-	kc, _ := k8sUtl.K8sClients()
-
-	cs, err := kc.InClusterClientSet()
-	if err != nil {
-		return nil, err
-	}
-
-	return cs, nil
-}
-
-// GetInClusterCS is a utility function to get clientset capable of communicating
-// with k8s on a different cluster.
-func GetOutClusterCS() (*kubernetes.Clientset, error) {
-	k8sUtl, err := newK8sUtil()
-	if err != nil {
-		return nil, err
-	}
-
-	kc, _ := k8sUtl.K8sClients()
-
-	cs, err := kc.OutClusterClientSet()
-	if err != nil {
-		return nil, err
-	}
-
-	return cs, nil
 }
