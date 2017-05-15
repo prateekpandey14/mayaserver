@@ -1,5 +1,7 @@
 # Maya API Server
 
+[![GoDoc](https://godoc.org/github.com/openebs/mayaserver?status.png)](https://godoc.org/github.com/openebs/mayaserver)
+
 > OpenEBS exposes its APIs here
 
 A service exposing `Kubernetes` like volume APIs.
