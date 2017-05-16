@@ -1,6 +1,6 @@
 # Maya API Server
 
-[![GoDoc](https://godoc.org/github.com/openebs/mayaserver?status.png)](https://godoc.org/github.com/openebs/mayaserver) [![Build Status](https://travis-ci.org/openebs/mayaserver.svg?branch=master)](https://travis-ci.org/openebs/mayaserver)
+[![GoDoc](https://godoc.org/github.com/openebs/mayaserver?status.png)](https://godoc.org/github.com/openebs/mayaserver) [![Build Status](https://travis-ci.org/openebs/mayaserver.svg?branch=master)](https://travis-ci.org/openebs/mayaserver) [![Go Report Card](https://goreportcard.com/badge/github.com/openebs/mayaserver)](https://goreportcard.com/report/github.com/openebs/mayaserver)
 
 > OpenEBS exposes its APIs here
 
