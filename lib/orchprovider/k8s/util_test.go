@@ -64,3 +64,57 @@ func TestK8sUtil(t *testing.T) {
 		}
 	}
 }
+
+// TestK8sUtilPods tests the working of Pods() method.
+//
+// NOTE:
+//    Error is expected when this test is run on environment that does not run
+// k8s.
+func TestK8sUtilPods(t *testing.T) {
+	cases := []struct {
+		err string
+	}{
+		{"unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined"},
+	}
+
+	volP, _ := volProfile.GetDefaultVolProProfile()
+
+	k8sUtl := &k8sUtil{
+		volProfile: volP,
+	}
+
+	for i, c := range cases {
+		_, err := k8sUtl.Pods()
+
+		if err != nil && err.Error() != c.err {
+			t.Errorf("TestCase: '%d' ExpectedPodsErr: '%s' ActualPodsErr: '%s'", i, c.err, err.Error())
+		}
+	}
+}
+
+// TestK8sUtilServices tests the working of Services() method.
+//
+// NOTE:
+//    Error is expected when this test is run on environment that does not run
+// k8s.
+func TestK8sUtilServices(t *testing.T) {
+	cases := []struct {
+		err string
+	}{
+		{"unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined"},
+	}
+
+	volP, _ := volProfile.GetDefaultVolProProfile()
+
+	k8sUtl := &k8sUtil{
+		volProfile: volP,
+	}
+
+	for i, c := range cases {
+		_, err := k8sUtl.Services()
+
+		if err != nil && err.Error() != c.err {
+			t.Errorf("TestCase: '%d' ExpectedServicesErr: '%s' ActualServicesErr: '%s'", i, c.err, err.Error())
+		}
+	}
+}
