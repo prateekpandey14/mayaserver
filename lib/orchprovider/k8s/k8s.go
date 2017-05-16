@@ -9,10 +9,8 @@ import (
 	"github.com/golang/glog"
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
-	orchProfile "github.com/openebs/mayaserver/lib/profile/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	"k8s.io/client-go/kubernetes"
-	k8sCv1 "k8s.io/client-go/pkg/api/v1"
+	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 )
 
 // The registration logic for the kubernetes as orchestrator provider plugin
@@ -38,7 +36,7 @@ func init() {
 // interfaces:
 //
 //  1. orchprovider.OrchestratorInterface,
-//  2. orchprovider.NetworkPlacements, &
+//  2. orchprovider.NetworkPlacements &
 //  3. orchprovider.StoragePlacements
 type k8sOrchestrator struct {
 	// label specified to this orchestrator
@@ -47,9 +45,8 @@ type k8sOrchestrator struct {
 	// name of the orchestrator as registered in the registry
 	name v1.OrchProviderRegistry
 
-	// util provides an instance which is capable of executing low level
-	// kubernetes tasks
-	util K8sUtilInterface
+	// Interface to fetch the K8sUtilInterface
+	K8sUtilGetter
 }
 
 // NewK8sOrchestrator provides a new instance of K8sOrchestrator.
@@ -65,15 +62,9 @@ func NewK8sOrchestrator(label v1.NameLabel, name v1.OrchProviderRegistry) (orchp
 		return nil, fmt.Errorf("Name not found while building k8s orchestrator")
 	}
 
-	util, err := newK8sUtil()
-	if err != nil {
-		return nil, err
-	}
-
 	return &k8sOrchestrator{
 		label: label,
 		name:  name,
-		util:  util,
 	}, nil
 }
 
@@ -101,6 +92,17 @@ func (k *k8sOrchestrator) Name() string {
 // This is an implementation of the orchprovider.OrchestratorInterface interface.
 func (k *k8sOrchestrator) Region() string {
 	return ""
+}
+
+// K8sUtil provides the k8sUtil instance that is capable of performing low level
+// k8s operations
+//
+// NOTE:
+//    This is an implementation of K8sUtilGetter interface
+func (k *k8sOrchestrator) K8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &k8sUtil{
+		volProfile: volProfile,
+	}
 }
 
 // StorageOps provides storage operations instance that deals with all storage
@@ -171,7 +173,12 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 
 // ReadStorage will fetch information about the persistent volume
 func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
-	cs, ns, err := k.getK8sCS(volProProfile)
+	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+	}
+
+	pOps, err := kc.Pods()
 	if err != nil {
 		return nil, err
 	}
@@ -187,17 +194,18 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, err
 	}
 
-	lOpts := k8sCv1.ListOptions{
+	lOpts := k8sApiV1.ListOptions{
 		LabelSelector: string(v1.VSMSelectorPrefix) + vsm,
 	}
 
-	podList, err := cs.CoreV1().Pods(ns).List(lOpts)
+	podList, err := pOps.List(lOpts)
 	if err != nil {
 		return nil, err
 	}
 
 	if podList == nil || len(podList.Items) == 0 {
-		return nil, fmt.Errorf("VSM '%s' not found at '%s:%s' 'ns:%s'", vsm, k.Label(), k.Name(), ns)
+		ns, _ := kc.NS()
+		return nil, fmt.Errorf("VSM '%s' not found at '%s:%s' '%s'", vsm, k.Label(), k.Name(), ns)
 	}
 
 	pvl := &v1.PersistentVolumeList{
@@ -234,50 +242,9 @@ func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, b
 	return nil, false
 }
 
-// getK8sCS fetches the relevant k8s clientset & pod namespace required for
-// subsequent k8s executions
-func (k *k8sOrchestrator) getK8sCS(volProProfile volProfile.VolumeProvisionerProfile) (*kubernetes.Clientset, string, error) {
-	// Fetch pvc from volume provisioner profile
-	pvc, err := volProProfile.PVC()
-	if err != nil {
-		return nil, "", err
-	}
-
-	// Get orchestrator provider profile from pvc
-	oPrfle, err := orchProfile.GetOrchProviderProfileByPVC(pvc)
-	if err != nil {
-		return nil, "", err
-	}
-
-	// Which kind of request ? in-cluster or out-of-cluster ?
-	isInCluster, err := oPrfle.InCluster()
-	if err != nil {
-		return nil, "", err
-	}
-
-	// Fetch appropriate kubernetes clientset
-	kc, supported := k.util.K8sClients()
-	if !supported {
-		return nil, "", fmt.Errorf("K8s client not supported by '%s'", k.util.Name())
-	}
-
-	cs, err := kc.GetClusterCS(isInCluster)
-	if err != nil {
-		return nil, "", err
-	}
-
-	// Get the namespace which will be queried
-	ns, err := oPrfle.NS()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return cs, ns, nil
-}
-
 // createControllerPod creates a persistent volume controller deployment in
 // kubernetes
-func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Pod, error) {
+func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Pod, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -293,14 +260,19 @@ func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumePro
 		return nil, fmt.Errorf("VSM '%s' requires a controller container image", vsm)
 	}
 
-	// fetch k8s clientset & namespace
-	cs, ns, err := k.getK8sCS(volProProfile)
+	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+	}
+
+	// fetch pod operator
+	pOps, err := kc.Pods()
 	if err != nil {
 		return nil, err
 	}
 
 	// create persistent volume controller as a k8s pod
-	ctrl := &k8sCv1.Pod{}
+	ctrl := &k8sApiV1.Pod{}
 	ctrl.Kind = string(v1.K8sKindDeployment)
 	ctrl.APIVersion = string(v1.K8sPodVersion)
 	ctrl.Name = vsm + string(v1.ControllerSuffix)
@@ -310,34 +282,34 @@ func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumePro
 	}
 
 	// specify the controller pod's container properties
-	ctrlCon := k8sCv1.Container{}
+	ctrlCon := k8sApiV1.Container{}
 	ctrlCon.Name = vsm + string(v1.ControllerSuffix) + string(v1.ContainerSuffix)
 	ctrlCon.Image = cImg
 	ctrlCon.Command = v1.JivaCtrlCmd
 	ctrlCon.Args = v1.JivaCtrlArgs
 
-	iscsiPort := k8sCv1.ContainerPort{}
+	iscsiPort := k8sApiV1.ContainerPort{}
 	iscsiPort.ContainerPort = v1.DefaultJivaISCSIPort()
 
-	apiPort := k8sCv1.ContainerPort{}
+	apiPort := k8sApiV1.ContainerPort{}
 	apiPort.ContainerPort = v1.DefaultJivaAPIPort()
 
 	// Set the ports
-	ctrlCon.Ports = []k8sCv1.ContainerPort{iscsiPort, apiPort}
+	ctrlCon.Ports = []k8sApiV1.ContainerPort{iscsiPort, apiPort}
 
-	ctrlSpec := k8sCv1.PodSpec{}
+	ctrlSpec := k8sApiV1.PodSpec{}
 	// Set the container
-	ctrlSpec.Containers = []k8sCv1.Container{ctrlCon}
+	ctrlSpec.Containers = []k8sApiV1.Container{ctrlCon}
 	// Set the pod spec
 	ctrl.Spec = ctrlSpec
 
 	// add persistent volume controller pod
-	return cs.CoreV1().Pods(ns).Create(ctrl)
+	return pOps.Create(ctrl)
 }
 
 // CreateReplicaPods creates one or more persistent volume replica(s)
 // deployment in Kubernetes
-func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sCv1.Pod, error) {
+func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApiV1.Pod, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -379,15 +351,20 @@ func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvi
 }
 
 // CreateReplicaPod creates a persistent volume replica deployment in Kubernetes
-func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string, rImg string, vsm string, position int, rCount int) (*k8sCv1.Pod, error) {
-	// fetch k8s clientset & namespace
-	cs, ns, err := k.getK8sCS(volProProfile)
+func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string, rImg string, vsm string, position int, rCount int) (*k8sApiV1.Pod, error) {
+	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+	}
+
+	// fetch k8s pod operator
+	pOps, err := kc.Pods()
 	if err != nil {
 		return nil, err
 	}
 
 	// Create persistent volume replica as a k8s pod
-	rep := &k8sCv1.Pod{}
+	rep := &k8sApiV1.Pod{}
 	rep.Kind = string(v1.K8sKindDeployment)
 	rep.APIVersion = string(v1.K8sPodVersion)
 	rep.Name = vsm + string(v1.JivaReplicaSuffix) + string(position)
@@ -397,7 +374,7 @@ func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvis
 	}
 
 	// Create the replica pod's container
-	repCon := k8sCv1.Container{}
+	repCon := k8sApiV1.Container{}
 	repCon.Name = vsm + string(v1.JivaReplicaSuffix) + string(v1.ContainerSuffix) + string(position)
 	repCon.Image = rImg
 	repCon.Command = v1.JivaReplicaCmd
@@ -410,32 +387,32 @@ func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvis
 	repCon.Args = v1.MakeOrDefJivaReplicaArgs(pvc.Labels, ctrlIP)
 
 	// Create replica pod ports
-	repPort1 := k8sCv1.ContainerPort{}
+	repPort1 := k8sApiV1.ContainerPort{}
 	repPort1.ContainerPort = v1.DefaultJivaReplicaPort1()
 
-	repPort2 := k8sCv1.ContainerPort{}
+	repPort2 := k8sApiV1.ContainerPort{}
 	repPort2.ContainerPort = v1.DefaultJivaReplicaPort2()
 
-	repPort3 := k8sCv1.ContainerPort{}
+	repPort3 := k8sApiV1.ContainerPort{}
 	repPort3.ContainerPort = v1.DefaultJivaReplicaPort3()
 
 	// Set the ports at container
-	repCon.Ports = []k8sCv1.ContainerPort{repPort1, repPort2, repPort3}
+	repCon.Ports = []k8sApiV1.ContainerPort{repPort1, repPort2, repPort3}
 
 	// Create replica pod volume mounts
-	repMount := k8sCv1.VolumeMount{}
+	repMount := k8sApiV1.VolumeMount{}
 	repMount.Name = v1.DefaultJivaMountName()
 	repMount.MountPath = v1.DefaultJivaMountPath()
 
 	// Set the mount paths at container
-	repCon.VolumeMounts = []k8sCv1.VolumeMount{repMount}
+	repCon.VolumeMounts = []k8sApiV1.VolumeMount{repMount}
 
 	// Create the replica pod's backing volume
-	repVol := k8sCv1.Volume{}
+	repVol := k8sApiV1.Volume{}
 	repVol.Name = v1.DefaultJivaMountName()
 
 	// Create the replica pod's host path
-	hostPath := &k8sCv1.HostPathVolumeSource{}
+	hostPath := &k8sApiV1.HostPathVolumeSource{}
 	persistPath, err := volProProfile.PersistentPath(position, rCount)
 	if err != nil {
 		return nil, err
@@ -446,35 +423,40 @@ func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvis
 	repVol.HostPath = hostPath
 
 	// Create the replica pod spec
-	repSpec := k8sCv1.PodSpec{}
+	repSpec := k8sApiV1.PodSpec{}
 	// Set the container at pod spec
-	repSpec.Containers = []k8sCv1.Container{repCon}
+	repSpec.Containers = []k8sApiV1.Container{repCon}
 	// Set the backing volume at pod spec
-	repSpec.Volumes = []k8sCv1.Volume{repVol}
+	repSpec.Volumes = []k8sApiV1.Volume{repVol}
 	// Set the pod spec at pod
 	rep.Spec = repSpec
 
 	// add persistent volume replica pod
-	return cs.CoreV1().Pods(ns).Create(rep)
+	return pOps.Create(rep)
 }
 
 // createControllerService creates a persistent volume controller service in
 // kubernetes
-func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.VolumeProvisionerProfile) (*k8sCv1.Service, error) {
+func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Service, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
 		return nil, err
 	}
 
+	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+	}
+
 	// fetch k8s clientset & namespace
-	cs, ns, err := k.getK8sCS(volProProfile)
+	sOps, err := kc.Services()
 	if err != nil {
 		return nil, err
 	}
 
 	// create persistent volume controller service
-	svc := &k8sCv1.Service{}
+	svc := &k8sApiV1.Service{}
 	svc.Kind = string(v1.K8sKindService)
 	svc.APIVersion = string(v1.K8sServiceVersion)
 	svc.Name = vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix)
@@ -482,16 +464,16 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 		string(v1.VSMIdentifier): vsm,
 	}
 
-	iscsiPort := k8sCv1.ServicePort{}
+	iscsiPort := k8sApiV1.ServicePort{}
 	iscsiPort.Name = string(v1.PortNameISCSI)
 	iscsiPort.Port = v1.DefaultJivaISCSIPort()
 
-	apiPort := k8sCv1.ServicePort{}
+	apiPort := k8sApiV1.ServicePort{}
 	apiPort.Name = string(v1.PortNameAPI)
 	apiPort.Port = v1.DefaultJivaAPIPort()
 
-	svcSpec := k8sCv1.ServiceSpec{}
-	svcSpec.Ports = []k8sCv1.ServicePort{iscsiPort, apiPort}
+	svcSpec := k8sApiV1.ServiceSpec{}
+	svcSpec.Ports = []k8sApiV1.ServicePort{iscsiPort, apiPort}
 	// Set the selector that identifies the controller VSM
 	svcSpec.Selector = map[string]string{
 		string(v1.VSMIdentifier): vsm + string(v1.ControllerSuffix),
@@ -501,7 +483,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svc.Spec = svcSpec
 
 	// add controller service
-	return cs.CoreV1().Services(ns).Create(svc)
+	return sOps.Create(svc)
 }
 
 // GetControllerService fetches the service name & service IP address
@@ -513,13 +495,18 @@ func (k *k8sOrchestrator) GetControllerService(volProProfile volProfile.VolumePr
 		return "", "", err
 	}
 
-	// fetch k8s clientset & namespace
-	cs, ns, err := k.getK8sCS(volProProfile)
+	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	if !supported {
+		return "", "", fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+	}
+
+	// fetch k8s service operations
+	sOps, err := kc.Services()
 	if err != nil {
 		return "", "", err
 	}
 
-	svc, err := cs.CoreV1().Services(ns).Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+	svc, err := sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
 	if err != nil {
 		return "", "", err
 	}

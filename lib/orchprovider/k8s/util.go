@@ -3,30 +3,45 @@ package k8s
 import (
 	"fmt"
 
+	orchProfile "github.com/openebs/mayaserver/lib/profile/orchprovider"
+	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"k8s.io/client-go/kubernetes"
+	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 )
+
+// K8sUtilGetter is an abstraction to fetch instances of K8sUtilInterface
+type K8sUtilGetter interface {
+	K8sUtil(volProfile.VolumeProvisionerProfile) K8sUtilInterface
+}
 
 // K8sUtilInterface is an abstraction over communicating with K8s APIs
 type K8sUtilInterface interface {
 	// Name of K8s utility
 	Name() string
 
-	// K8sClients fetches an instance of K8sClients. Will return
+	// K8sClient fetches an instance of K8sClients. Will return
 	// false if the util does not support providing K8sClients instance.
-	K8sClients() (K8sClients, bool)
+	K8sClient() (K8sClient, bool)
 }
 
-// K8sClients is an abstraction over various connection modes (http, rpc)
-// to K8s. Http client is currently supported.
+// K8sClient is an abstraction to operate on various k8s entities.
 //
 // NOTE:
 //    This abstraction makes use of K8s's client-go package.
-type K8sClients interface {
+type K8sClient interface {
+	// InCluster indicates whether the operation is within cluster or in a
+	// different cluster
+	InCluster() (bool, error)
 
-	// ClientSet is capable to communicate with an in-cluster K8s
-	// or outside the cluster depending on the passed flag.
-	GetClusterCS(bool) (*kubernetes.Clientset, error)
+	// NS provides the namespace where operations will be executed
+	NS() (string, error)
+
+	// Pods provides all the CRUD operations associated w.r.t a POD
+	Pods() (k8sCoreV1.PodInterface, error)
+
+	// Services provides all the CRUD operations associated w.r.t a Service
+	Services() (k8sCoreV1.ServiceInterface, error)
 }
 
 // k8sUtil provides the concrete implementation for below interfaces:
@@ -34,45 +49,142 @@ type K8sClients interface {
 // 1. k8s.K8sUtilInterface interface
 // 2. k8s.K8sClients interface
 type k8sUtil struct {
-	// K8s server / cluster coordinates
-	//k8sConf *K8sConfig
-
 	caCert     string
 	caPath     string
 	clientCert string
 	clientKey  string
 	insecure   bool
-}
 
-// newK8sUtil provides a new instance of k8sUtil
-func newK8sUtil() (K8sUtilInterface, error) {
-	return &k8sUtil{}, nil
+	// volProfile has context related information w.r.t k8s
+	volProfile volProfile.VolumeProvisionerProfile
 }
 
 // This is a plain k8s utility & hence the name
 func (k *k8sUtil) Name() string {
-	return "k8sutil"
+	ns, _ := k.NS()
+	return fmt.Sprintf("k8sutil @ '%s'", ns)
 }
 
-// k8sUtil implements K8sClients interface. Hence it returns
+// k8sUtil implements K8sClient interface. Hence it returns
 // self
-func (k *k8sUtil) K8sClients() (K8sClients, bool) {
+func (k *k8sUtil) K8sClient() (K8sClient, bool) {
 	return k, true
 }
 
-// GetClusterCS is a utility function to get clientset capable of communicating
-// with k8s APIs.
-func (k *k8sUtil) GetClusterCS(incluster bool) (*kubernetes.Clientset, error) {
-	if incluster {
-		return k.inClusterClientSet()
-	} else {
-		return k.outClusterClientSet()
+// NS provides the namespace where operations will be executed
+func (k *k8sUtil) NS() (string, error) {
+	if nil == k.volProfile {
+		return "", fmt.Errorf("Volume provisioner profile not initialized at '%s'", k.Name())
 	}
+
+	// Fetch pvc from volume provisioner profile
+	pvc, err := k.volProfile.PVC()
+	if err != nil {
+		return "", err
+	}
+
+	// Get orchestrator provider profile from pvc
+	oPrfle, err := orchProfile.GetOrchProviderProfileByPVC(pvc)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the namespace which will be queried
+	ns, err := oPrfle.NS()
+	if err != nil {
+		return "", err
+	}
+
+	return ns, nil
 }
 
-// ClientSet is used to initialize and return a new http client capable
+// InCluster indicates whether the operation is within cluster or in a
+// different cluster
+func (k *k8sUtil) InCluster() (bool, error) {
+	if nil == k.volProfile {
+		return false, fmt.Errorf("Volume provisioner profile not initialized at '%s'", k.Name())
+	}
+
+	// Fetch pvc from volume provisioner profile
+	pvc, err := k.volProfile.PVC()
+	if err != nil {
+		return false, err
+	}
+
+	// Get orchestrator provider profile from pvc
+	oPrfle, err := orchProfile.GetOrchProviderProfileByPVC(pvc)
+	if err != nil {
+		return false, err
+	}
+
+	// Which kind of request ? in-cluster or out-of-cluster ?
+	isInCluster, err := oPrfle.InCluster()
+	if err != nil {
+		return false, err
+	}
+
+	return isInCluster, nil
+}
+
+// Pods is a utility function that provides a instance capable of
+// executing various k8s pod related operations.
+func (k *k8sUtil) Pods() (k8sCoreV1.PodInterface, error) {
+	var cs *kubernetes.Clientset
+
+	inC, err := k.InCluster()
+	if err != nil {
+		return nil, err
+	}
+
+	ns, err := k.NS()
+	if err != nil {
+		return nil, err
+	}
+
+	if inC {
+		cs, err = k.inClusterCS()
+	} else {
+		cs, err = k.outClusterCS()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cs.CoreV1().Pods(ns), nil
+}
+
+// Services is a utility function that provides a instance capable of
+// executing various k8s service related operations.
+func (k *k8sUtil) Services() (k8sCoreV1.ServiceInterface, error) {
+	var cs *kubernetes.Clientset
+
+	inC, err := k.InCluster()
+	if err != nil {
+		return nil, err
+	}
+
+	ns, err := k.NS()
+	if err != nil {
+		return nil, err
+	}
+
+	if inC {
+		cs, err = k.inClusterCS()
+	} else {
+		cs, err = k.outClusterCS()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cs.CoreV1().Services(ns), nil
+}
+
+// inClusterCS is used to initialize and return a new http client capable
 // of invoking K8s APIs.
-func (k *k8sUtil) inClusterClientSet() (*kubernetes.Clientset, error) {
+func (k *k8sUtil) inClusterCS() (*kubernetes.Clientset, error) {
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -80,7 +192,7 @@ func (k *k8sUtil) inClusterClientSet() (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
-	// creates the in cluster clientset
+	// creates the in-cluster clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, err
@@ -89,8 +201,8 @@ func (k *k8sUtil) inClusterClientSet() (*kubernetes.Clientset, error) {
 	return clientset, nil
 }
 
-// OutClusterClientSet is used to initialize and return a new http client capable
+// outClusterCS is used to initialize and return a new http client capable
 // of invoking outside the cluster K8s APIs.
-func (k *k8sUtil) outClusterClientSet() (*kubernetes.Clientset, error) {
-	return nil, fmt.Errorf("OutClusterClientSet not supported in '%s'", k.Name())
+func (k *k8sUtil) outClusterCS() (*kubernetes.Clientset, error) {
+	return nil, fmt.Errorf("outClusterCS not supported in '%s'", k.Name())
 }

@@ -1,7 +1,10 @@
 package k8s
 
 import (
+	"fmt"
 	"testing"
+
+	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 )
 
 // TestK8sUtilInterfaceCompliance verifies if k8sUtil implements
@@ -14,51 +17,50 @@ func TestK8sUtilInterfaceCompliance(t *testing.T) {
 	// k8sUtil implements K8sUtilInterface
 	var _ K8sUtilInterface = &k8sUtil{}
 	// k8sUtil implements K8sClients
-	var _ K8sClients = &k8sUtil{}
+	var _ K8sClient = &k8sUtil{}
 }
 
-// TestNewK8sUtil verifies the function that creates a new instance of
-// k8sUtil. In addition, it verifies if the returned instance
-// provides features it is expected of.
-func TestNewK8sUtil(t *testing.T) {
+// TestK8sUtil tests the k8sUil instance as well as its properties
+func TestK8sUtil(t *testing.T) {
 	cases := []struct {
+		name      string
 		incluster bool
-		err       string
+		ns        string
 	}{
-		{true, "unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined"},
-		{false, "OutClusterClientSet not supported in 'k8sutil'"},
+		{"k8sutil", true, "default"},
+	}
+
+	volP, _ := volProfile.GetDefaultVolProProfile()
+
+	k8sUtl := &k8sUtil{
+		volProfile: volP,
 	}
 
 	for i, c := range cases {
-		u, err := newK8sUtil()
 
+		incActual, err := k8sUtl.InCluster()
 		if err != nil {
-			t.Errorf("TestCase: '%d' ExpectedError: 'nil' ActualError: '%s'", i, err.Error())
+			t.Errorf("TestCase: '%d' ExpectedInClusterErr: 'nil' ActualInClusterErr: '%s'", i, err.Error())
 		}
 
-		if "k8sutil" != u.Name() {
-			t.Errorf("TestCase: '%d' ExpectedName: 'k8sutil' ActualName: '%s'", i, u.Name())
+		if incActual != c.incluster {
+			t.Errorf("TestCase: '%d' ExpectedInCluster: '%s' ActualInCluster: '%s'", i, c.incluster, incActual)
 		}
 
-		// K8s Clients is always supported by k8sUtil
-		kc, supported := u.K8sClients()
-		if !supported {
-			t.Errorf("TestCase: '%d' ExpectedK8sClientsSupport: 'true' ActualK8sClientsSupport: '%t'", i, supported)
+		nsActual, err := k8sUtl.NS()
+		if err != nil {
+			t.Errorf("TestCase: '%d' ExpectedNSErr: 'nil' ActualNSErr: '%s'", i, err.Error())
 		}
 
-		_, err = kc.GetClusterCS(c.incluster)
-
-		if c.incluster && err != nil && c.err != err.Error() {
-			t.Errorf("TestCase: '%d' ExpectedCSError: '%s' ActualCSError: '%s'", i, c.err, err.Error())
+		if nsActual != c.ns {
+			t.Errorf("TestCase: '%d' ExpectedNS: '%s' ActualNS: '%s'", i, c.ns, nsActual)
 		}
 
-		// out of cluster communication is not yet supported
-		if !c.incluster && err == nil {
-			t.Errorf("TestCase: '%d' ExpectedCSError: '%s' ActualCSError: 'nil'", i, c.err)
-		}
+		nActual := k8sUtl.Name()
+		nExptd := fmt.Sprintf("%s @ '%s'", c.name, c.ns)
 
-		if !c.incluster && err != nil && c.err != err.Error() {
-			t.Errorf("TestCase: '%d' ExpectedCSError: '%s' ActualCSError: '%s'", i, c.err, err.Error())
+		if nActual != nExptd {
+			t.Errorf("TestCase: '%d' ExpectedName: '%s' ActualName: '%s'", i, nExptd, nActual)
 		}
 	}
 }

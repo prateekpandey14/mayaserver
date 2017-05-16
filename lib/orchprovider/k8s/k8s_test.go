@@ -18,6 +18,8 @@ func TestK8sOrchInterfaceCompliance(t *testing.T) {
 	var _ orchprovider.OrchestratorInterface = &k8sOrchestrator{}
 	// k8sOrchestrator implements orchprovider.StorageOps
 	var _ orchprovider.StorageOps = &k8sOrchestrator{}
+	// k8sOrchestrator implements k8s.K8sUtilGetter
+	var _ K8sUtilGetter = &k8sOrchestrator{}
 }
 
 // TestNewK8sOrchestrator verifies the function that creates a new instance of
