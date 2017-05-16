@@ -99,6 +99,9 @@ func (k *k8sOrchestrator) Region() string {
 //
 // NOTE:
 //    This is an implementation of K8sUtilGetter interface
+//
+// NOTE:
+// This is meant to be used internally by k8sOrchestrator
 func (k *k8sOrchestrator) K8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
 	return &k8sUtil{
 		volProfile: volProfile,

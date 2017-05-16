@@ -5,6 +5,7 @@ import (
 
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
+	//volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 )
 
 // TestK8sOrchInterfaceCompliance verifies if k8sOrchestrator implements
@@ -67,5 +68,20 @@ func TestNewK8sOrchestrator(t *testing.T) {
 				t.Errorf("TestCase: '%d' ExpectedStorageOpsSupport: 'true' ActualStorageOpsSupport: '%t'", i, supported)
 			}
 		}
+	}
+}
+
+// TestK8sStorageOps will verify the correctness of StorageOps() method of
+// k8sOrchestrator
+func TestK8sStorageOps(t *testing.T) {
+	o, _ := NewK8sOrchestrator(v1.OrchestratorNameLbl, v1.DefaultOrchestrator)
+
+	storOps, supported := o.StorageOps()
+	if !supported {
+		t.Errorf("ExpectedStorageOpsSupport: 'true' ActualStorageOpsSupport: 'false'")
+	}
+
+	if storOps == nil {
+		t.Errorf("ExpectedStorageOps: 'non-nil' ActualStorageOps: 'nil'")
 	}
 }
