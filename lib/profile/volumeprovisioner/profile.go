@@ -82,18 +82,18 @@ type VolumeProvisionerProfile interface {
 // profile. It will decide first based on the provided specifications failing
 // which will ensure a default profile is returned.
 func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	if pvc == nil {
-		return GetDefaultVolProProfile()
+	if pvc == nil || pvc.Labels == nil {
+		return nil, fmt.Errorf("PVC is required to create a volume provisioner profile")
 	}
 
 	// Extract the name of volume provisioner profile
 	volProflName := v1.VolumeProvisionerProfileName(pvc.Labels)
 
 	if volProflName == "" {
-		return GetDefaultVolProProfile()
+		return GetDefaultVolProProfile(pvc)
 	}
 
-	return GetVolProProfileByName(volProflName)
+	return GetVolProProfileByName(volProflName, pvc)
 }
 
 // GetDefaultVolProProfile will return the default volume provisioner
@@ -101,15 +101,20 @@ func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProf
 //
 // NOTE:
 //    PVC based volume provisioner profile is considered as default
-func GetDefaultVolProProfile() (VolumeProvisionerProfile, error) {
-	return &pvcVolProProfile{}, nil
+func GetDefaultVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
+
+	if pvc == nil || pvc.Labels == nil {
+		return nil, fmt.Errorf("PVC is required to create default volume provisioner profile")
+	}
+
+	return newPvcVolProProfile(pvc)
 }
 
 // TODO
 //
 // GetVolProProfileByName will return a volume provisioner profile by
 // looking up from the provided profile name.
-func GetVolProProfileByName(name string) (VolumeProvisionerProfile, error) {
+func GetVolProProfileByName(name string, pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
 	// TODO
 	// Search from the in-memory registry
 
@@ -136,10 +141,6 @@ type pvcVolProProfile struct {
 // newPvcVolProProfile provides a new instance of VolumeProvisionerProfile that is
 // based on pvc (i.e. persistent volume claim).
 func newPvcVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	if pvc == nil {
-		return nil, fmt.Errorf("Missing PVC in '%s:%s'", v1.PVPProfileNameLbl, v1.PVCProvisionerProfile)
-	}
-
 	return &pvcVolProProfile{
 		pvc: pvc,
 	}, nil
@@ -177,10 +178,6 @@ func (pp *pvcVolProProfile) PVC() (*v1.PersistentVolumeClaim, error) {
 // A persistent volume provisioner plugin may be linked with a orchestrator
 // e.g. K8s, Nomad, Mesos, Swarm, etc. It can be Docker engine as well.
 func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error) {
-	if pp.pvc == nil {
-		return v1.DefaultOrchestratorName(), true, nil
-	}
-
 	// Extract the name of orchestration provider
 	oName := v1.OrchestratorName(pp.pvc.Labels)
 

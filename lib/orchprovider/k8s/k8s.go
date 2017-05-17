@@ -45,8 +45,10 @@ type k8sOrchestrator struct {
 	// name of the orchestrator as registered in the registry
 	name v1.OrchProviderRegistry
 
-	// Interface to fetch the K8sUtilInterface
-	K8sUtilGetter
+	// k8sUtlGtr provides the handle to fetch K8sUtilInterface
+	// NOTE:
+	//    This will be set at runtime.
+	k8sUtlGtr K8sUtilGetter
 }
 
 // NewK8sOrchestrator provides a new instance of K8sOrchestrator.
@@ -94,18 +96,45 @@ func (k *k8sOrchestrator) Region() string {
 	return ""
 }
 
-// K8sUtil provides the k8sUtil instance that is capable of performing low level
-// k8s operations
+// GetK8sUtil provides the k8sUtil instance that is capable of performing low
+// level k8s operations
 //
 // NOTE:
 //    This is an implementation of K8sUtilGetter interface
 //
 // NOTE:
-// This is meant to be used internally by k8sOrchestrator
-func (k *k8sOrchestrator) K8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+//    This is meant to be used by k8sOrchestrator & is not a generic
+// orchprovider.OrchestratorInterface contract
+func (k *k8sOrchestrator) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+
+	// TODO validations
+	// if volProfile == nil
+	// if volProfile.PVC() == nil
+	// if volProfile.PVC().Labels == nil
+
 	return &k8sUtil{
 		volProfile: volProfile,
 	}
+}
+
+// k8sOrchUtil provides a common utility function for k8sOrchestrator to get an
+// instance of k8sUtilInterface
+func k8sOrchUtil(k *k8sOrchestrator, volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	// k8sUtilGetter may or may not have been set earlier
+	//
+	// NOTE:
+	//    If k8sUtilGetter was set earlier, it is known as dependency injection.
+	// This means the dependency was injected at runtime. The flow of execution
+	// will depend on the injected dependency
+	//
+	// NOTE:
+	//    If k8sUtilGetter was not set, then use the default one
+	if k.k8sUtlGtr == nil {
+		// k8sOrchestrator is a k8sUtilGetter implementor
+		k.k8sUtlGtr = k
+	}
+
+	return k.k8sUtlGtr.GetK8sUtil(volProfile)
 }
 
 // StorageOps provides storage operations instance that deals with all storage
@@ -176,9 +205,11 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 
 // ReadStorage will fetch information about the persistent volume
 func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
-	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	pOps, err := kc.Pods()
@@ -263,9 +294,12 @@ func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumePro
 		return nil, fmt.Errorf("VSM '%s' requires a controller container image", vsm)
 	}
 
-	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+
 	if !supported {
-		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch pod operator
@@ -355,9 +389,11 @@ func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvi
 
 // CreateReplicaPod creates a persistent volume replica deployment in Kubernetes
 func (k *k8sOrchestrator) createReplicaPod(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string, rImg string, vsm string, position int, rCount int) (*k8sApiV1.Pod, error) {
-	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s pod operator
@@ -447,9 +483,11 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 		return nil, err
 	}
 
-	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return nil, fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s clientset & namespace
@@ -498,9 +536,11 @@ func (k *k8sOrchestrator) GetControllerService(volProProfile volProfile.VolumePr
 		return "", "", err
 	}
 
-	kc, supported := k.K8sUtil(volProProfile).K8sClient()
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return "", "", fmt.Errorf("K8s client not supported by '%s'", k.K8sUtil(volProProfile).Name())
+		return "", "", fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s service operations

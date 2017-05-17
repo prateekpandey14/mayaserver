@@ -12,7 +12,7 @@ import (
 
 // K8sUtilGetter is an abstraction to fetch instances of K8sUtilInterface
 type K8sUtilGetter interface {
-	K8sUtil(volProfile.VolumeProvisionerProfile) K8sUtilInterface
+	GetK8sUtil(volProfile.VolumeProvisionerProfile) K8sUtilInterface
 }
 
 // K8sUtilInterface is an abstraction over communicating with K8s APIs

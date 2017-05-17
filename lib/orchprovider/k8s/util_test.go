@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/openebs/mayaserver/lib/api/v1"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 )
 
@@ -30,7 +31,11 @@ func TestK8sUtil(t *testing.T) {
 		{"k8sutil", true, "default"},
 	}
 
-	volP, _ := volProfile.GetDefaultVolProProfile()
+	// a noop pvc that in turn signals use of defaults
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Labels = map[string]string{}
+
+	volP, _ := volProfile.GetDefaultVolProProfile(pvc)
 
 	k8sUtl := &k8sUtil{
 		volProfile: volP,
@@ -77,7 +82,11 @@ func TestK8sUtilPods(t *testing.T) {
 		{"unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined"},
 	}
 
-	volP, _ := volProfile.GetDefaultVolProProfile()
+	// a noop pvc that in turn signals use of defaults
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Labels = map[string]string{}
+
+	volP, _ := volProfile.GetDefaultVolProProfile(pvc)
 
 	k8sUtl := &k8sUtil{
 		volProfile: volP,
@@ -104,7 +113,11 @@ func TestK8sUtilServices(t *testing.T) {
 		{"unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined"},
 	}
 
-	volP, _ := volProfile.GetDefaultVolProProfile()
+	// a noop pvc that in turn signals use of defaults
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Labels = map[string]string{}
+
+	volP, _ := volProfile.GetDefaultVolProProfile(pvc)
 
 	k8sUtl := &k8sUtil{
 		volProfile: volP,
