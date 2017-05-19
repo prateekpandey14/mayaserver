@@ -10,6 +10,7 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 )
 
@@ -212,6 +213,11 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
+	ns, err := kc.NS()
+	if err != nil {
+		return nil, err
+	}
+
 	pOps, err := kc.Pods()
 	if err != nil {
 		return nil, err
@@ -228,6 +234,9 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, err
 	}
 
+	// This filtering logic does not work with client-go v2.0.0
+	// Need to write code for filtering to work.
+	// Need to upgrade client-go to stable version
 	lOpts := k8sApiV1.ListOptions{
 		LabelSelector: string(v1.VSMSelectorPrefix) + vsm,
 	}
@@ -238,8 +247,7 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 	}
 
 	if podList == nil || len(podList.Items) == 0 {
-		ns, _ := kc.NS()
-		return nil, fmt.Errorf("VSM '%s' not found at '%s:%s' '%s'", vsm, k.Label(), k.Name(), ns)
+		return nil, fmt.Errorf("VSM '%s:%s' not found. Orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
 	}
 
 	pvl := &v1.PersistentVolumeList{
@@ -249,10 +257,15 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 	// TODO
 	// Transform the POD type to persistent volume type
 	// Do this in v1/k8s package ??
-	for _, pod := range podList.Items {
-		pv := v1.PersistentVolume{}
-		pv.Name = pod.Name
-		pvl.Items = append(pvl.Items, pv)
+	for i, pod := range podList.Items {
+
+		if pod.Name != vsm || pod.Namespace != ns {
+			return nil, fmt.Errorf("VSM mismatch. Expected: '%s:%s' Found: '%s:%s' Orchestrator: '%s:%s'", ns, vsm, pod.Namespace, pod.Name, k.Label(), k.Name())
+		}
+
+		//pv := v1.PersistentVolume{}
+		//pv.Name = pod.Name
+		pvl.Items[i].Name = pod.Name
 	}
 
 	return pvl, nil

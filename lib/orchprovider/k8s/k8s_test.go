@@ -8,6 +8,11 @@ import (
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8sApi "k8s.io/client-go/pkg/api"
+	k8sApiv1 "k8s.io/client-go/pkg/api/v1"
+	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
+	watch "k8s.io/client-go/pkg/watch"
+	"k8s.io/client-go/rest"
 )
 
 // TestK8sOrchInterfaceCompliance verifies if k8sOrchestrator implements
@@ -136,6 +141,7 @@ const (
 	testK8sInjectInClusterErrLbl k8sVBTLbl = "k8s-inject-in-cluster-err"
 	testK8sInjectPodErrLbl       k8sVBTLbl = "k8s-inject-pod-err"
 	testK8sInjectSvcErrLbl       k8sVBTLbl = "k8s-inject-svc-err"
+	testK8sInjectVSMLbl          k8sVBTLbl = "k8s-inject-vsm"
 	testK8sErrorLbl              k8sVBTLbl = "k8s-err"
 )
 
@@ -167,13 +173,15 @@ func (m *mockK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile)
 	// mockK8sUtil is instantiated based on a 'Value Based Test' record/row
 	return &mockK8sUtil{
 		name:               pvc.Labels[string(testK8sUtlNameLbl)],
+		vsmName:            pvc.Labels[string(v1.PVPVSMNameLbl)],
 		kcSupport:          pvc.Labels[string(testK8sClientSupportLbl)],
-		ns:                 pvc.Labels[string(testK8sNSLbl)],
+		ns:                 pvc.Labels[string(v1.OrchNSLbl)],
 		injectNSErr:        pvc.Labels[string(testK8sInjectNSErrLbl)],
 		inCluster:          pvc.Labels[string(testK8sInClusterLbl)],
 		injectInClusterErr: pvc.Labels[string(testK8sInjectInClusterErrLbl)],
 		injectPodErr:       pvc.Labels[string(testK8sInjectPodErrLbl)],
 		injectSvcErr:       pvc.Labels[string(testK8sInjectSvcErrLbl)],
+		injectVsm:          pvc.Labels[string(testK8sInjectVSMLbl)],
 		resultingErr:       pvc.Labels[string(testK8sErrorLbl)],
 	}
 }
@@ -183,6 +191,8 @@ func (m *mockK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile)
 type mockK8sUtil struct {
 	// name of this instance
 	name string
+	// name of the mocked VSM
+	vsmName string
 	// truthy value indicating support for k8s client
 	kcSupport string
 	// namespace
@@ -197,6 +207,8 @@ type mockK8sUtil struct {
 	injectPodErr string
 	// injected error for Services() execution
 	injectSvcErr string
+	// truthy value
+	injectVsm string
 	// resultingErr is the error message that is returned
 	resultingErr string
 }
@@ -235,7 +247,11 @@ func (m *mockK8sUtil) NS() (string, error) {
 
 func (m *mockK8sUtil) Pods() (k8sCoreV1.PodInterface, error) {
 	if m.injectPodErr == "" {
-		return nil, nil
+		return &mockPodOps{
+			ns:        m.ns,
+			vsmName:   m.vsmName,
+			injectVsm: m.injectVsm,
+		}, nil
 	} else {
 		return nil, errors.New(m.injectPodErr)
 	}
@@ -243,10 +259,131 @@ func (m *mockK8sUtil) Pods() (k8sCoreV1.PodInterface, error) {
 
 func (m *mockK8sUtil) Services() (k8sCoreV1.ServiceInterface, error) {
 	if m.injectSvcErr == "" {
-		return nil, nil
+		return &mockSvcOps{}, nil
 	} else {
 		return nil, errors.New(m.injectSvcErr)
 	}
+}
+
+// mockPodOps implements k8sCoreV1.PodInterface and hence provides
+// necessary mock path
+type mockPodOps struct {
+	// namespace
+	ns string
+	// vsmName is the name of the mocked VSM
+	vsmName string
+	// truthy value
+	injectVsm string
+}
+
+func (m *mockPodOps) Create(*k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
+	return &k8sApiv1.Pod{}, nil
+}
+
+func (m *mockPodOps) Update(*k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
+	return &k8sApiv1.Pod{}, nil
+}
+
+func (m *mockPodOps) UpdateStatus(*k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
+	return &k8sApiv1.Pod{}, nil
+}
+
+func (m *mockPodOps) Delete(name string, options *k8sApiv1.DeleteOptions) error {
+	return nil
+}
+
+func (m *mockPodOps) DeleteCollection(options *k8sApiv1.DeleteOptions, listOptions k8sApiv1.ListOptions) error {
+	return nil
+}
+
+func (m *mockPodOps) Get(name string) (*k8sApiv1.Pod, error) {
+	return &k8sApiv1.Pod{}, nil
+}
+
+// List presents the mocked logic w.r.t pod list operation
+func (m *mockPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+
+	if m.injectVsm == "true" {
+		pod := k8sApiv1.Pod{
+			ObjectMeta: k8sApiv1.ObjectMeta{
+				Name:      m.vsmName,
+				Namespace: m.ns,
+				Labels: map[string]string{
+					"vsm": m.vsmName,
+				},
+			},
+		}
+
+		return &k8sApiv1.PodList{
+			Items: []k8sApiv1.Pod{pod},
+		}, nil
+	}
+
+	return nil, nil
+}
+
+func (m *mockPodOps) Watch(opts k8sApiv1.ListOptions) (watch.Interface, error) {
+	return nil, nil
+}
+
+func (m *mockPodOps) Patch(name string, pt k8sApi.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Pod, err error) {
+	return &k8sApiv1.Pod{}, nil
+}
+
+func (m *mockPodOps) Bind(binding *k8sApiv1.Binding) error {
+	return nil
+}
+
+func (m *mockPodOps) Evict(eviction *policy.Eviction) error {
+	return nil
+}
+
+func (m *mockPodOps) GetLogs(name string, opts *k8sApiv1.PodLogOptions) *rest.Request {
+	return &rest.Request{}
+}
+
+// mockSvcOps implements k8sCoreV1.ServiceInterface and hence provides
+// necessary mock path
+type mockSvcOps struct{}
+
+func (m *mockSvcOps) Create(*k8sApiv1.Service) (*k8sApiv1.Service, error) {
+	return &k8sApiv1.Service{}, nil
+}
+
+func (m *mockSvcOps) Update(*k8sApiv1.Service) (*k8sApiv1.Service, error) {
+	return &k8sApiv1.Service{}, nil
+}
+
+func (m *mockSvcOps) UpdateStatus(*k8sApiv1.Service) (*k8sApiv1.Service, error) {
+	return &k8sApiv1.Service{}, nil
+}
+
+func (m *mockSvcOps) Delete(name string, options *k8sApiv1.DeleteOptions) error {
+	return nil
+}
+
+func (m *mockSvcOps) DeleteCollection(options *k8sApiv1.DeleteOptions, listOptions k8sApiv1.ListOptions) error {
+	return nil
+}
+
+func (m *mockSvcOps) Get(name string) (*k8sApiv1.Service, error) {
+	return &k8sApiv1.Service{}, nil
+}
+
+func (m *mockSvcOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.ServiceList, error) {
+	return &k8sApiv1.ServiceList{}, nil
+}
+
+func (m *mockSvcOps) Watch(opts k8sApiv1.ListOptions) (watch.Interface, error) {
+	return nil, nil
+}
+
+func (m *mockSvcOps) Patch(name string, pt k8sApi.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Service, err error) {
+	return &k8sApiv1.Service{}, nil
+}
+
+func (m *mockSvcOps) ProxyGet(scheme, name, port, path string, params map[string]string) rest.ResponseWrapper {
+	return nil
 }
 
 // TestAddStorageWithMocks will verify the correctness of AddStorage() method of
@@ -257,11 +394,15 @@ func TestAddStorageWithMocks(t *testing.T) {
 		// We are not going by the usual instantiation technique for k8sOrchestrator
 		// Below style is to inject our mock
 		k8sOrchestrator: k8sOrchestrator{
+			label: v1.NameLabel("mock-orch-lbl"),
+			name:  v1.OrchProviderRegistry("mock-k8s-orch"),
 			// mockK8sOrch is also a k8sUtilInterface implementor
 			k8sUtlGtr: &mockK8sOrch{},
 		},
 	}
 
+	// NOTE:
+	//    WATCH OUT: The order of entries are very important here
 	cases := []struct {
 		kUtlName           string
 		vsmName            string
@@ -272,29 +413,56 @@ func TestAddStorageWithMocks(t *testing.T) {
 		injectInClusterErr string
 		injectPodErr       string
 		injectSvcErr       string
+		injectVsm          string
 		resultingErr       string
 	}{
-		{"mock-k8s-util",
-			"",
-			"true",
-			"mock-ns",
-			"",
-			"",
-			"true",
-			"",
-			"",
-			"Missing VSM name in 'volumeprovisioner.mapi.openebs.io/profile-name:pvc'",
+		{"mock-k8s-util", // kUtlName
+			"",        // vsmName
+			"true",    // kcSupport truthy
+			"mock-ns", //ns
+			"",        // injectNSErr Msg
+			"",        // inCluster
+			"",        // injectInClusterErr Msg
+			"",        // injectPodErr Msg
+			"",        // injectSvcErr Msg
+			"false",   // injectVsm
+			"Missing VSM name in 'volumeprovisioner.mapi.openebs.io/profile-name:pvc'", //resultingErr Msg
 		},
-		{"mock-k8s-util",
-			"mock-vsm",
-			"true",
-			"mock-ns",
-			"",
-			"true",
-			"",
-			"mock-pod-err",
-			"",
-			"mock-pod-err",
+		{"mock-k8s-util", // kUtlName
+			"mock-vsm",     // vsmName
+			"true",         // kcSupport truthy
+			"mock-ns",      // ns
+			"",             // injectNSErr Msg
+			"true",         // inCluster truthy
+			"",             // injectInClusterErr Msg
+			"mock-pod-err", // injectPodErr Msg
+			"",             // injectSvcErr Msg
+			"false",        // injectVsm
+			"mock-pod-err", // resultingErr Msg
+		},
+		{"mock-k8s-util", // kUtlName
+			"mock-vsm",     // vsmName
+			"true",         // kcSupport truthy
+			"mock-ns",      //ns
+			"",             // injectNSErr Msg
+			"true",         // inCluster truthy
+			"",             // injectInClusterErr Msg
+			"",             // injectPodErr Msg
+			"mock-svc-err", // injectSvcErr Msg
+			"false",        // injectVsm
+			"mock-svc-err", // resultingErr Msg
+		},
+		{"mock-k8s-util", // kUtlName
+			"mock-vsm", // vsmName
+			"true",     // kcSupport truthy
+			"mock-ns",  // ns
+			"",         // injectNSErr Msg
+			"true",     // inCluster truthy
+			"",         // injectInClusterErr Msg
+			"",         // injectPodErr Msg
+			"",         // injectSvcErr Msg
+			"true",     // injectVsm
+			"",         // resultingErr Msg
 		},
 	}
 
@@ -309,12 +477,13 @@ func TestAddStorageWithMocks(t *testing.T) {
 			string(testK8sUtlNameLbl):            c.kUtlName,
 			string(v1.PVPVSMNameLbl):             c.vsmName,
 			string(testK8sClientSupportLbl):      c.kcSupport,
-			string(testK8sNSLbl):                 c.ns,
+			string(v1.OrchNSLbl):                 c.ns,
 			string(testK8sInjectNSErrLbl):        c.injectNSErr,
 			string(testK8sInClusterLbl):          c.inCluster,
 			string(testK8sInjectInClusterErrLbl): c.injectInClusterErr,
 			string(testK8sInjectPodErrLbl):       c.injectPodErr,
 			string(testK8sInjectSvcErrLbl):       c.injectSvcErr,
+			string(testK8sInjectVSMLbl):          c.injectVsm,
 			string(testK8sErrorLbl):              c.resultingErr,
 		}
 
@@ -324,11 +493,29 @@ func TestAddStorageWithMocks(t *testing.T) {
 
 		if !supported {
 			t.Errorf("TestCase: #%d \n\tExpectedStorageOpsSupport: 'true' \n\tActualStorageOpsSupport: '%t'", i+1, supported)
+			continue
 		}
 
-		_, err := sOps.AddStorage(volP)
+		pvList, err := sOps.AddStorage(volP)
+
 		if err != nil && err.Error() != c.resultingErr {
 			t.Errorf("TestCase: #%d \n\tExpectedAddStorageErr: '%s' \n\tActualAddStorageErr: '%s'", i+1, c.resultingErr, err.Error())
+
+		} else if c.injectVsm == "true" && pvList == nil {
+			t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodList: 'non-nil' \n\tActualAddStoragePodList: 'nil'", i+1)
+
+		} else if c.injectVsm == "true" && len(pvList.Items) == 0 {
+			t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodCount: 'non 0' \n\tActualAddStoragePodCount: '0'", i+1)
+
+		} else if c.injectVsm == "true" {
+			count := len(pvList.Items)
+
+			for i := 0; i < count; i++ {
+				pv := pvList.Items[i]
+				if pv.Name != c.vsmName {
+					t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodName: '%s' \n\tActualAddStoragePodName: '%s' \n\tGotPod: '%v'", i+1, c.vsmName, pv.Name, pv)
+				}
+			}
 		}
 	}
 }

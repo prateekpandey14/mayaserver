@@ -390,15 +390,15 @@ func (pp *pvcVolProProfile) PersistentPath(position int, rCount int) (string, er
 		return v1.DefaultJivaPersistentPath(vsm, position), nil
 	}
 
-	pPathArr := strings.Split(pPath, ",")
+	//pPathArr := strings.Split(pPath, ",")
 
-	if len(pPathArr) != rCount {
-		return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
-	}
+	//if len(pPathArr) != rCount {
+	//	return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
+	//}
 
-	iPPath := strings.TrimSpace(pPathArr[position-1])
+	//iPPath := strings.TrimSpace(pPathArr[position-1])
 
-	return iPPath, nil
+	return pPath, nil
 }
 
 // srVolProProfile represents a single replica based persistent volume

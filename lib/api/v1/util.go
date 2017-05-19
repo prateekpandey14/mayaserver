@@ -393,7 +393,7 @@ func PersistentPathCount(profileMap map[string]string) string {
 //    This utility function does not validate & just returns if not capable of
 // performing
 func JivaPersistentPath(profileMap map[string]string, vsm string, position int) string {
-	if profileMap == nil {
+	if profileMap == nil || profileMap[string(PVPPersistentPathLbl)] == "" {
 		return ""
 	}
 
