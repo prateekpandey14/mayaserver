@@ -68,6 +68,9 @@ format:
 	@echo "--> Running go fmt"
 	@go fmt $(PACKAGES)
 
+lint:
+	@echo "--> Running golint"
+	@golint $(PACKAGES)
 vet:
 	@go tool vet 2>/dev/null ; if [ $$? -eq 3 ]; then \
 		go get golang.org/x/tools/cmd/vet; \
