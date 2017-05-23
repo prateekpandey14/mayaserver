@@ -10,7 +10,7 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 )
 
@@ -206,6 +206,17 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 
 // ReadStorage will fetch information about the persistent volume
 func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
+	// NOTE:
+	//    A VSM can be one or more k8s PODs
+	//
+	// NOTE:
+	//    maya api service assigns the VSM name as one of the labels against all
+	// the pods created during creation of persistent volume
+	vsm, err := volProProfile.VSMName()
+	if err != nil {
+		return nil, err
+	}
+
 	k8sUtl := k8sOrchUtil(k, volProProfile)
 
 	kc, supported := k8sUtl.K8sClient()
@@ -223,20 +234,9 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, err
 	}
 
-	// NOTE:
-	//    A VSM can be one or more k8s PODs
-	//
-	// NOTE:
-	//    maya api service assigns the VSM name as one of the labels against all
-	// the pods created during creation of persistent volume
-	vsm, err := volProProfile.VSMName()
-	if err != nil {
-		return nil, err
-	}
-
-	// This filtering logic does not work with client-go v2.0.0
-	// Need to write code for filtering to work.
-	// Need to upgrade client-go to stable version
+	// TODO
+	// This filtering logic DOES NOT WORK with client-go v2.0.0
+	// Need to upgrade client-go to latest stable version for this to work
 	lOpts := k8sApiV1.ListOptions{
 		LabelSelector: string(v1.VSMSelectorPrefix) + vsm,
 	}
@@ -246,26 +246,32 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, err
 	}
 
-	if podList == nil || len(podList.Items) == 0 {
-		return nil, fmt.Errorf("VSM '%s:%s' not found. Orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
+	if podList == nil {
+		return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
 	}
 
-	pvl := &v1.PersistentVolumeList{
-		Items: make([]v1.PersistentVolume, len(podList.Items)),
+	// NOTE:
+	//    Workaround for above filtering logic that does not work
+	// Get the filtered pod list based on expected label
+	eLblStr := string(v1.VSMSelectorPrefix) + vsm
+	eLbl, err := labels.Parse(eLblStr)
+	if err != nil {
+		return nil, err
 	}
 
-	// TODO
-	// Transform the POD type to persistent volume type
-	// Do this in v1/k8s package ??
-	for i, pod := range podList.Items {
+	// This is the return type
+	pvl := &v1.PersistentVolumeList{}
 
-		if pod.Name != vsm || pod.Namespace != ns {
-			return nil, fmt.Errorf("VSM mismatch. Expected: '%s:%s' Found: '%s:%s' Orchestrator: '%s:%s'", ns, vsm, pod.Namespace, pod.Name, k.Label(), k.Name())
+	for _, item := range podList.Items {
+		if eLbl.Matches(labels.Set(item.Labels)) {
+			pv := v1.PersistentVolume{}
+			pv.Name = item.Name
+			pvl.Items = append(pvl.Items, pv)
 		}
+	}
 
-		//pv := v1.PersistentVolume{}
-		//pv.Name = pod.Name
-		pvl.Items[i].Name = pod.Name
+	if pvl == nil || len(pvl.Items) == 0 {
+		return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
 	}
 
 	return pvl, nil
