@@ -22,7 +22,11 @@ install:
 script:
   - make bin 
   - ls -la pkg/
+  - ./buildscripts/test-cov.sh
 
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
+  
 deploy:
   provider: releases
   api_key:
