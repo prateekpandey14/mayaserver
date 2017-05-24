@@ -24,7 +24,7 @@ root@921f974ee490:/# cat /etc/mayaserver/orchprovider/nomad_global.INI
 
 ## To run the image with custom ENV values 
 
-Refer ../docker-compose/README.md
+Refer [docker-compose](../docker-compose/README.md)
 
 ## Cleaning up Docker Images & Containers
 
