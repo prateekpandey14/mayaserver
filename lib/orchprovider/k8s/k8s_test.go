@@ -813,6 +813,48 @@ func (e *errPodListPodOpsK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
 	return &errPodListPodOps{}, nil
 }
 
+// errSvcOpsK8sOrch is a k8s orchestrator that returns
+// errSvcOpsK8sUtil
+type errSvcOpsK8sOrch struct {
+	k8sOrchestrator
+}
+
+// K8sUtil returns an instance of errSvcOpsK8sUtil
+func (m *errSvcOpsK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errSvcOpsK8sUtil{}
+}
+
+// errSvcOpsK8sUtil is a k8sUtil that provides errSvcOpsK8sClient
+type errSvcOpsK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of errSvcOpsK8sUtil
+func (m *errSvcOpsK8sUtil) Name() string {
+	return "err-svc-ops-k8s-util"
+}
+
+// K8sClient returns an instance of errSvcOpsK8sClient
+func (m *errSvcOpsK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errSvcOpsK8sClient{}, true
+}
+
+// errSvcOpsK8sClient is a K8sClient that returns error during Services()
+// invocation
+type errSvcOpsK8sClient struct {
+	K8sClient
+}
+
+// NS will not return any error
+func (e *errSvcOpsK8sClient) NS() (string, error) {
+	return "ok-ns", nil
+}
+
+// Services returns error
+func (e *errSvcOpsK8sClient) Services() (k8sCoreV1.ServiceInterface, error) {
+	return nil, fmt.Errorf("err-svc-ops")
+}
+
 // errPodListPodOps is an instance of k8sCoreV1.PodInterface that returns error
 // during List invocation
 type errPodListPodOps struct {
@@ -1072,6 +1114,55 @@ func (m *okCreatePodPodOps) Create(pod *k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
 	return pod, nil
 }
 
+// okCreateServiceK8sOrch is a k8s orchestrator that returns an
+// instance of okCreateServiceK8sUtil
+type okCreateServiceK8sOrch struct {
+	k8sOrchestrator
+}
+
+// GetK8sUtil returns an instance of okCreateServiceK8sUtil
+func (m *okCreateServiceK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &okCreateServiceK8sUtil{}
+}
+
+// okCreateServiceK8sUtil is a k8sUtil that returns an instance of
+// okCreateServiceK8sClient
+type okCreateServiceK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of okCreateServiceK8sUtil
+func (m *okCreateServiceK8sUtil) Name() string {
+	return "ok-create-svc-k8s-util"
+}
+
+// K8sClient returns an instance of okCreateServiceK8sClient
+func (m *okCreateServiceK8sUtil) K8sClient() (K8sClient, bool) {
+	return &okCreateServiceK8sClient{}, true
+}
+
+// okCreateServiceK8sClient is a K8sClient that returns
+// okCreateServiceSvcOps
+type okCreateServiceK8sClient struct {
+	K8sClient
+}
+
+// Services returns an instance of okCreateServiceSvcOps
+func (e *okCreateServiceK8sClient) Services() (k8sCoreV1.ServiceInterface, error) {
+	return &okCreateServiceSvcOps{}, nil
+}
+
+// okCreateServiceSvcOps is a k8sCoreV1.ServiceInterface that does not
+// return error during Create() invocation
+type okCreateServiceSvcOps struct {
+	k8sCoreV1.ServiceInterface
+}
+
+// Create returns service that it receives without any error
+func (m *okCreateServiceSvcOps) Create(svc *k8sApiv1.Service) (*k8sApiv1.Service, error) {
+	return svc, nil
+}
+
 // TestCreateControllerPodReturnsOk returns a valid pod while invoking
 // createControllerPod().
 func TestCreateControllerPodReturnsOk(t *testing.T) {
@@ -1101,9 +1192,9 @@ func TestCreateControllerPodReturnsOk(t *testing.T) {
 
 	// Verify the pod name
 	vsm, _ := volProfile.VSMName()
-	expectedVSM := vsm + string(v1.ControllerSuffix)
-	if cp.Name != expectedVSM {
-		t.Errorf("TestCase: VSM Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", expectedVSM, cp.Name)
+	ePodName := vsm + string(v1.ControllerSuffix)
+	if cp.Name != ePodName {
+		t.Errorf("TestCase: Pod Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", ePodName, cp.Name)
 	}
 
 	// Verify the pod labels
@@ -1318,5 +1409,120 @@ func TestReadStorageReturnsOk(t *testing.T) {
 	expectedVSM := "ok-vsm-name"
 	if pvl.Items[0].Name != expectedVSM {
 		t.Errorf("TestCase: VSM Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", expectedVSM, pvl.Items[0].Name)
+	}
+}
+
+// TestCreateControllerServiceReturnsErrVsmName verifies the vsm name error
+func TestCreateControllerServiceReturnsErrVsmName(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	_, err := mockedO.createControllerService(&errVsmNameVolumeProfile{})
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-vsm-name" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: 'err-vsm-name' \n\tActualErr: '%s'", err.Error())
+	}
+}
+
+// TestCreateControllerServiceReturnsNoK8sClientSupport verifies no K8sClient
+// support error
+func TestCreateControllerServiceReturnsNoK8sClientSupport(t *testing.T) {
+	mockedO := &noK8sClientSupportK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &noK8sClientSupportK8sOrch{},
+		},
+	}
+
+	volProfile := &okVsmNameVolumeProfile{}
+
+	_, err := mockedO.createControllerService(volProfile)
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	expErr := fmt.Sprintf("K8s client not supported by '%s'", "no-k8s-client-support-k8s-util")
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestCreateControllerServiceReturnsErrSvcOps verifies the services operator
+// error
+func TestCreateControllerServiceReturnsErrSvcOps(t *testing.T) {
+	mockedO := &errSvcOpsK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &errSvcOpsK8sOrch{},
+		},
+	}
+
+	volProfile := &okCtrlImgVolumeProfile{}
+
+	_, err := mockedO.createControllerService(volProfile)
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	expErr := "err-svc-ops"
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestCreateControllerServiceReturnsOk verifies non error scenario
+func TestCreateControllerServiceReturnsOk(t *testing.T) {
+	mockedO := &okCreateServiceK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &okCreateServiceK8sOrch{},
+		},
+	}
+
+	volProfile := &okCtrlImgVolumeProfile{}
+
+	svc, err := mockedO.createControllerService(volProfile)
+
+	if err != nil {
+		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
+	}
+
+	// Verify the service kind
+	if svc.Kind != string(v1.K8sKindService) {
+		t.Errorf("TestCase: Kind Match \n\tExpectedKind: '%s' \n\tActualKind: '%s'", v1.K8sKindService, svc.Kind)
+	}
+
+	// Verify the service version
+	if svc.APIVersion != string(v1.K8sServiceVersion) {
+		t.Errorf("TestCase: Service Version Match \n\tExpectedAPIVersion: '%s' \n\tActualAPIVersion: '%s'", v1.K8sServiceVersion, svc.APIVersion)
+	}
+
+	// Verify the service name
+	vsm, _ := volProfile.VSMName()
+	eSvcName := vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix)
+	if svc.Name != eSvcName {
+		t.Errorf("TestCase: Service Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", eSvcName, svc.Name)
+	}
+
+	// Verify the service labels
+	eLblStr := string(v1.VSMSelectorPrefix) + vsm
+	eLbl, _ := labels.Parse(eLblStr)
+	if !eLbl.Matches(labels.Set(svc.Labels)) {
+		t.Errorf("TestCase: Labels Match \n\tExpectedLabels: '%s' \n\tActualLabels: '%s'", eLbl, labels.Set(svc.Labels))
+	}
+
+	// Verify no. of ports within the service spec
+	if len(svc.Spec.Ports) != 2 {
+		t.Errorf("TestCase: No. of Ports \n\tExpectedPorts: '2' \n\tActualPorts: '%d'", len(svc.Spec.Ports))
+	}
+
+	// Verify the service spec labels
+	eSelectorStr := string(v1.VSMSelectorPrefix) + vsm + string(v1.ControllerSuffix)
+	eSelector, _ := labels.Parse(eSelectorStr)
+	if !eSelector.Matches(labels.Set(svc.Spec.Selector)) {
+		t.Errorf("TestCase: Selector Match \n\tExpectedSelector: '%s' \n\tActualSelector: '%s'", eSelector, labels.Set(svc.Spec.Selector))
 	}
 }
