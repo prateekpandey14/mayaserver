@@ -90,7 +90,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vbguest.auto_update = false
   
   1.upto(NODES.to_i) do |i|
-    hostname = "node-%02d" % [i]
+    hostname = "maya-dev-node-%02d" % [i]
     cpus = CPUS
     mem = MEM
     
