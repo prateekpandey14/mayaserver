@@ -96,4 +96,11 @@ bootstrap:
 install: bin/${CTLNAME}
 	install -o root -g root -m 0755 ./bin/${CTLNAME} /usr/local/bin/${CTLNAME}
 
-.PHONY: all bin cov install test vet format cover bootstrap release clean deps init dev sync
+image:
+	@cp bin/m-apiserver buildscripts/docker/
+	@cd buildscripts/docker && sudo docker build -t openebs/m-apiserver:ci .
+	@sh buildscripts/push
+
+
+
+.PHONY: all bin cov install test vet format cover bootstrap release clean deps init dev sync image

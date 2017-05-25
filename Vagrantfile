@@ -79,6 +79,7 @@ def configureVM(vmCfg, hostname, cpus, mem)
   # Script will make some directories before installation procedure
   vmCfg.vm.provision "shell", inline: $installer, privileged: false 
   vmCfg.vm.provision "shell", inline: $mayaserverdev, privileged: false
+  vmCfg.vm.provision "docker" # Just install it
   
   return vmCfg
 end
