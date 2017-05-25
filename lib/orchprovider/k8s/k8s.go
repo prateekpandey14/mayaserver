@@ -172,7 +172,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 
 	// TODO
 	// Get the persistent volume controller service name & IP address
-	_, ctrlIP, err := k.GetControllerService(volProProfile)
+	_, ctrlIP, err := k.getControllerService(volProProfile)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -546,9 +546,9 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	return sOps.Create(svc)
 }
 
-// GetControllerService fetches the service name & service IP address
+// getControllerService fetches the service name & service IP address
 // of the persistent volume controller
-func (k *k8sOrchestrator) GetControllerService(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
+func (k *k8sOrchestrator) getControllerService(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {

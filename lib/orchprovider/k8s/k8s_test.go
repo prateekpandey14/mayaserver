@@ -772,6 +772,119 @@ func (e *errPodOpsK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
 	return nil, fmt.Errorf("err-pod-ops")
 }
 
+// errSvcGetK8sOrch is a k8s orchestrator that returns
+// errSvcGetK8sUtil
+type errSvcGetK8sOrch struct {
+	k8sOrchestrator
+}
+
+// K8sUtil returns errSvcGetK8sUtil
+func (m *errSvcGetK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errSvcGetK8sUtil{}
+}
+
+// errSvcGetK8sUtil is a k8sUtil that provides errSvcGetK8sClient
+type errSvcGetK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of errPodListPodOpsK8sUtil
+func (m *errSvcGetK8sUtil) Name() string {
+	return "err-svc-get-k8s-util"
+}
+
+// K8sClient returns an instance of errSvcGetK8sClient
+func (m *errSvcGetK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errSvcGetK8sClient{}, true
+}
+
+// errSvcGetK8sClient is a K8sClient that returns errSvcGetPodOps
+type errSvcGetK8sClient struct {
+	K8sClient
+}
+
+// NS will not return any error
+func (e *errSvcGetK8sClient) NS() (string, error) {
+	return "ok-ns", nil
+}
+
+// Pods returns an instance of errSvcGetSvcOps
+func (e *errSvcGetK8sClient) Services() (k8sCoreV1.ServiceInterface, error) {
+	return &errSvcGetSvcOps{}, nil
+}
+
+// errSvcGetSvcOps is a k8sCoreV1.ServiceInterface that returns error during
+// Get() invocation
+type errSvcGetSvcOps struct {
+	k8sCoreV1.ServiceInterface
+}
+
+// Get returns an error
+func (m *errSvcGetSvcOps) Get(svc string) (*k8sApiv1.Service, error) {
+	return nil, fmt.Errorf("err-svc-get")
+}
+
+// okGetServiceK8sOrch is a k8s orchestrator that returns
+// okSvcGetK8sUtil
+type okGetServiceK8sOrch struct {
+	k8sOrchestrator
+}
+
+// K8sUtil returns an instance of okSvcGetK8sUtil
+func (m *okGetServiceK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &okSvcGetK8sUtil{}
+}
+
+// okSvcGetK8sUtil is a k8sUtil that provides errSvcGetK8sClient
+type okSvcGetK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of okSvcGetK8sUtil
+func (m *okSvcGetK8sUtil) Name() string {
+	return "ok-svc-get-k8s-util"
+}
+
+// K8sClient returns an instance of okSvcGetK8sClient
+func (m *okSvcGetK8sUtil) K8sClient() (K8sClient, bool) {
+	return &okSvcGetK8sClient{}, true
+}
+
+// okSvcGetK8sClient is a K8sClient that returns okSvcGetPodOps
+type okSvcGetK8sClient struct {
+	K8sClient
+}
+
+// NS will not return any error
+func (e *okSvcGetK8sClient) NS() (string, error) {
+	return "ok-ns", nil
+}
+
+// Services returns an instance of okSvcGetSvcOps
+func (e *okSvcGetK8sClient) Services() (k8sCoreV1.ServiceInterface, error) {
+	return &okSvcGetSvcOps{}, nil
+}
+
+// okSvcGetSvcOps is a k8sCoreV1.ServiceInterface that does not
+// return error during Get() invocation
+type okSvcGetSvcOps struct {
+	k8sCoreV1.ServiceInterface
+}
+
+// Get returns service that it receives without any error
+func (m *okSvcGetSvcOps) Get(svc string) (*k8sApiv1.Service, error) {
+	s := &k8sApiv1.Service{
+		ObjectMeta: k8sApiv1.ObjectMeta{
+			Name: "ok-svc-name",
+		},
+		Spec: k8sApiv1.ServiceSpec{
+			ClusterIP: "1.1.1.1",
+		},
+	}
+
+	return s, nil
+}
+
 // errPodListPodOpsK8sOrch is a k8s orchestrator that returns
 // errPodListPodOpsK8sUtil
 type errPodListPodOpsK8sOrch struct {
@@ -1524,5 +1637,115 @@ func TestCreateControllerServiceReturnsOk(t *testing.T) {
 	eSelector, _ := labels.Parse(eSelectorStr)
 	if !eSelector.Matches(labels.Set(svc.Spec.Selector)) {
 		t.Errorf("TestCase: Selector Match \n\tExpectedSelector: '%s' \n\tActualSelector: '%s'", eSelector, labels.Set(svc.Spec.Selector))
+	}
+}
+
+// TestGetControllerServiceReturnsErrVsmName verifies the vsm name error
+func TestGetControllerServiceReturnsErrVsmName(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	_, _, err := mockedO.getControllerService(&errVsmNameVolumeProfile{})
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-vsm-name" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: 'err-vsm-name' \n\tActualErr: '%s'", err.Error())
+	}
+}
+
+// TestGetControllerServiceReturnsNoK8sClientSupport verifies no K8sClient
+// support error
+func TestGetControllerServiceReturnsNoK8sClientSupport(t *testing.T) {
+	mockedO := &noK8sClientSupportK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &noK8sClientSupportK8sOrch{},
+		},
+	}
+
+	volProfile := &okVsmNameVolumeProfile{}
+
+	_, _, err := mockedO.getControllerService(volProfile)
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	expErr := fmt.Sprintf("K8s client not supported by '%s'", "no-k8s-client-support-k8s-util")
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestGetControllerServiceReturnsErrSvcOps verifies the services operator
+// error
+func TestGetControllerServiceReturnsErrSvcOps(t *testing.T) {
+	mockedO := &errSvcOpsK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &errSvcOpsK8sOrch{},
+		},
+	}
+
+	volProfile := &okCtrlImgVolumeProfile{}
+
+	_, _, err := mockedO.getControllerService(volProfile)
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	expErr := "err-svc-ops"
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestGetControllerServiceReturnsErrSvcGet verifies the error received during
+// a Get() call on services operator
+func TestGetControllerServiceReturnsErrSvcGet(t *testing.T) {
+	mockedO := &errSvcGetK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &errSvcGetK8sOrch{},
+		},
+	}
+
+	volProfile := &okCtrlImgVolumeProfile{}
+
+	_, _, err := mockedO.getControllerService(volProfile)
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	expErr := "err-svc-get"
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestGetControllerServiceReturnsOk verifies non error scenario
+func TestGetControllerServiceReturnsOk(t *testing.T) {
+	mockedO := &okGetServiceK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &okGetServiceK8sOrch{},
+		},
+	}
+
+	volProfile := &okCtrlImgVolumeProfile{}
+
+	name, ip, err := mockedO.getControllerService(volProfile)
+
+	if err != nil {
+		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
+	}
+
+	if name != "ok-svc-name" {
+		t.Errorf("TestCase: Service Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", "ok-svc-name", name)
+	}
+
+	if ip != "1.1.1.1" {
+		t.Errorf("TestCase: Service IP Match \n\tExpectedIP: '%s' \n\tActualIP: '%s'", "1.1.1.1", ip)
 	}
 }

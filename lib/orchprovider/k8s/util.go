@@ -37,9 +37,15 @@ type K8sClient interface {
 	// NS provides the namespace where operations will be executed
 	NS() (string, error)
 
+	// TODO
+	//    Rename to PodOps
+	//
 	// Pods provides all the CRUD operations associated w.r.t a POD
 	Pods() (k8sCoreV1.PodInterface, error)
 
+	// TODO
+	//    Rename to ServiceOps
+	//
 	// Services provides all the CRUD operations associated w.r.t a Service
 	Services() (k8sCoreV1.ServiceInterface, error)
 }
