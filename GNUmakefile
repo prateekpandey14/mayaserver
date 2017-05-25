@@ -8,6 +8,7 @@ VETARGS?=-asmdecl -atomic -bool -buildtags -copylocks -methods \
 # Tools required for different make targets or for development purposes
 EXTERNAL_TOOLS=\
 	github.com/kardianos/govendor \
+	github.com/golang/lint/golint \
 	github.com/mitchellh/gox \
 	golang.org/x/tools/cmd/cover \
 	github.com/axw/gocov/gocov \
