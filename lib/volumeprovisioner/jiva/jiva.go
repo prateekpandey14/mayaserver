@@ -246,7 +246,7 @@ func (j *jivaStor) Adder() (volumeprovisioner.Adder, bool) {
 }
 
 // TODO
-// Rename to Creator ??
+// Deprecate in favour of Adder
 //
 // Provisioner provides a instance of volume.Provisioner interace
 // Since jivaStor implements volume.Provisioner, it returns self.
@@ -281,6 +281,9 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 	return j.jStorOps.StorageInfo(pvc)
 }
 
+// TODO
+// pvc need not be passed at all as it should have been set via Profile()
+//
 // Read provides information about a jiva persistent volume
 //
 // NOTE:
@@ -302,6 +305,9 @@ func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList
 	return storOps.ReadStorage(pvc)
 }
 
+// TODO
+// pvc need not be passed at all as it should have been set via Profile()
+//
 // Add creates a new jiva persistent volume
 //
 // NOTE:
@@ -324,7 +330,7 @@ func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList,
 }
 
 // TODO
-// Rename to Create ??
+// Deprecate in favour of Add
 //
 // Provision provisions a jiva volume
 //

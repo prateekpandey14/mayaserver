@@ -2,3 +2,4 @@
 .vagrant
 *.log
 /bin
+buildscripts/docker/m-apiserver

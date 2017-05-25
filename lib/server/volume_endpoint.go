@@ -91,42 +91,6 @@ func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.R
 	}
 }
 
-// vsmRead is the http handler that fetches the details of a VSM
-func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-
-	pvc := v1.PersistentVolumeClaim{}
-
-	// The yaml/json spec is decoded to pvc struct
-	if err := decodeBody(req, &pvc); err != nil {
-		return nil, CodedError(400, err.Error())
-	}
-
-	// Name is expected to be available even in the minimalist specs
-	if pvc.Name == "" {
-		return nil, CodedError(400, fmt.Sprintf("VSM name missing in '%v'", pvc))
-	}
-
-	// Get jiva persistent volume provisioner instance
-	jiva, err := volumeprovisioner.GetVolumeProvisioner()
-	if err != nil {
-		return nil, err
-	}
-
-	adder, ok := jiva.Adder()
-	if !ok {
-		return nil, fmt.Errorf("VSM add is not supported by '%s:%s'", jiva.Label(), jiva.Name())
-	}
-
-	// TODO
-	// Do you need to provide the address of pvc ?
-	details, err := adder.Add(&pvc)
-	if err != nil {
-		return nil, err
-	}
-
-	return details, nil
-}
-
 func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
 
 	pvc := v1.PersistentVolumeClaim{}
@@ -265,15 +229,60 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 		return nil, err
 	}
 
+	// Create a PVC
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Name = vsmName
+
+	// Set the volume provisioner profile to jiva provisioner
+	jiva.Profile(pvc)
+
 	reader, ok := jiva.Reader()
 	if !ok {
 		return nil, fmt.Errorf("VSM read is not supported by '%s:%s'", jiva.Label(), jiva.Name())
 	}
 
-	pvc := &v1.PersistentVolumeClaim{}
-	pvc.Name = vsmName
-
+	// TODO
+	// pvc should not be passed again !!
 	details, err := reader.Read(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	return details, nil
+}
+
+// vsmAdd is the http handler that fetches the details of a VSM
+func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+
+	pvc := v1.PersistentVolumeClaim{}
+
+	// The yaml/json spec is decoded to pvc struct
+	if err := decodeBody(req, &pvc); err != nil {
+		return nil, CodedError(400, err.Error())
+	}
+
+	// Name is expected to be available even in the minimalist specs
+	if pvc.Name == "" {
+		return nil, CodedError(400, fmt.Sprintf("VSM name missing in '%v'", pvc))
+	}
+
+	// Get jiva persistent volume provisioner instance
+	jiva, err := volumeprovisioner.GetVolumeProvisioner()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the volume provisioner profile to jiva provisioner
+	jiva.Profile(&pvc)
+
+	adder, ok := jiva.Adder()
+	if !ok {
+		return nil, fmt.Errorf("VSM add is not supported by '%s:%s'", jiva.Label(), jiva.Name())
+	}
+
+	// TODO
+	// pvc should not be passed again !!
+	details, err := adder.Add(&pvc)
 	if err != nil {
 		return nil, err
 	}
