@@ -234,7 +234,10 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 	pvc.Name = vsmName
 
 	// Set the volume provisioner profile to jiva provisioner
-	jiva.Profile(pvc)
+	_, err = jiva.Profile(pvc)
+	if err != nil {
+	  return nil, err
+	}
 
 	reader, ok := jiva.Reader()
 	if !ok {
@@ -273,7 +276,10 @@ func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interf
 	}
 
 	// Set the volume provisioner profile to jiva provisioner
-	jiva.Profile(&pvc)
+	_, err = jiva.Profile(&pvc)
+	if err != nil {
+	  return nil, err
+	}
 
 	adder, ok := jiva.Adder()
 	if !ok {

@@ -82,7 +82,8 @@ type VolumeProvisionerProfile interface {
 // profile. It will decide first based on the provided specifications failing
 // which will ensure a default profile is returned.
 func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	if pvc == nil || pvc.Labels == nil {
+	//if pvc == nil || pvc.Labels == nil {
+	if pvc == nil {
 		return nil, fmt.Errorf("PVC is required to create a volume provisioner profile")
 	}
 
@@ -103,7 +104,8 @@ func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProf
 //    PVC based volume provisioner profile is considered as default
 func GetDefaultVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
 
-	if pvc == nil || pvc.Labels == nil {
+	//if pvc == nil || pvc.Labels == nil {
+	if pvc == nil {
 		return nil, fmt.Errorf("PVC is required to create default volume provisioner profile")
 	}
 
