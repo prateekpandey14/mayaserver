@@ -187,7 +187,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, nil
 	}
 
-	_, err = k.CreateReplicaPods(volProProfile, ctrlIP)
+	_, err = k.createReplicaPods(volProProfile, ctrlIP)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -363,9 +363,9 @@ func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumePro
 	return pOps.Create(ctrl)
 }
 
-// CreateReplicaPods creates one or more persistent volume replica(s)
+// createReplicaPods creates one or more persistent volume replica(s)
 // deployment in Kubernetes
-func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApiV1.Pod, error) {
+func (k *k8sOrchestrator) createReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApiV1.Pod, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -402,6 +402,8 @@ func (k *k8sOrchestrator) CreateReplicaPods(volProProfile volProfile.VolumeProvi
 		}
 	}
 
+	// TODO
+	// This should return a list of pods
 	return nil, nil
 
 }

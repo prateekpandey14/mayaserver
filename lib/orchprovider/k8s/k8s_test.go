@@ -619,6 +619,118 @@ func (e *noSupportCtrlImgVolumeProfile) ControllerImage() (string, bool, error) 
 	return "", false, nil
 }
 
+// noSupportRepImgVolumeProfile focusses on returning not supported during
+// invocation of ReplicaImage() method
+type noSupportRepImgVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// ReplicaImage returns not supported
+func (e *noSupportRepImgVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "", false, nil
+}
+
+// errRepImgVolumeProfile returns an error during invocation of ReplicaImage()
+// method
+type errRepImgVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// ReplicaImage returns an error
+func (e *errRepImgVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "", false, fmt.Errorf("err-rep-image")
+}
+
+// errRepCountVolumeProfile returns an error during invocation of ReplicaCount()
+// method
+type errRepCountVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// ReplicaImage does not return any error
+func (e *errRepCountVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "ok-rep-img", true, nil
+}
+
+// ReplicaCount returns an error
+func (e *errRepCountVolumeProfile) ReplicaCount() (int, error) {
+	return 0, fmt.Errorf("err-rep-count")
+}
+
+// errPersistentPathCountVolumeProfile returns an error during invocation of
+// PersistentPathCount() method
+type errPersistentPathCountVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// ReplicaImage does not return any error
+func (e *errPersistentPathCountVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "ok-rep-img", true, nil
+}
+
+// ReplicaCount does not return any error
+func (e *errPersistentPathCountVolumeProfile) ReplicaCount() (int, error) {
+	return 0, nil
+}
+
+// PersistentPathCount returns an error
+func (e *errPersistentPathCountVolumeProfile) PersistentPathCount() (int, error) {
+	return 0, fmt.Errorf("err-persistent-path-count")
+}
+
+// errReplicaCountMatchVolumeProfile returns an error due to mismatch of
+// replica count & persistent path count
+type errReplicaCountMatchVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// ReplicaImage does not return any error
+func (e *errReplicaCountMatchVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "ok-rep-img", true, nil
+}
+
+// ReplicaCount does not return any error
+func (e *errReplicaCountMatchVolumeProfile) ReplicaCount() (int, error) {
+	return 0, nil
+}
+
+// PersistentPathCount does not return any error
+func (e *errReplicaCountMatchVolumeProfile) PersistentPathCount() (int, error) {
+	return 1, nil
+}
+
+// okCreateReplicaPodVolumeProfile does not return any error
+type okCreateReplicaPodVolumeProfile struct {
+	volProfile.VolumeProvisionerProfile
+}
+
+// PVC does not return any error
+func (e *okCreateReplicaPodVolumeProfile) PVC() (*v1.PersistentVolumeClaim, error) {
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Labels = map[string]string{}
+	return pvc, nil
+}
+
+// PersistentPath does not return any error
+func (e *okCreateReplicaPodVolumeProfile) PersistentPath(position int, rCount int) (string, error) {
+	return "/tmp/ok-vsm-name/openebs" + string(position), nil
+}
+
+// ReplicaImage does not return any error
+func (e *okCreateReplicaPodVolumeProfile) ReplicaImage() (string, bool, error) {
+	return "ok-rep-img", true, nil
+}
+
+// ReplicaCount does not return any error
+func (e *okCreateReplicaPodVolumeProfile) ReplicaCount() (int, error) {
+	return 2, nil
+}
+
+// PersistentPathCount does not return any error
+func (e *okCreateReplicaPodVolumeProfile) PersistentPathCount() (int, error) {
+	return 2, nil
+}
+
 // TestCreateControllerPodReturnsNoSupportCtrlImg returns not supported while
 // invoking createControllerPod(). This error is due to invocation of
 // ControllerImage() within createControllerPod().
@@ -883,6 +995,32 @@ func (m *okSvcGetSvcOps) Get(svc string) (*k8sApiv1.Service, error) {
 	}
 
 	return s, nil
+}
+
+// errCreateReplicaPodK8sOrch is a k8s orchestrator that returns
+// errCreateReplicaPodK8sUtil
+type errCreateReplicaPodK8sOrch struct {
+	k8sOrchestrator
+}
+
+// GetK8sUtil returns an instance of errCreateReplicaPodK8sUtil
+func (m *errCreateReplicaPodK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errCreateReplicaPodK8sUtil{}
+}
+
+// errCreateReplicaPodK8sUtil is a k8sUtil that provides errSvcGetK8sClient
+type errCreateReplicaPodK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of errCreateReplicaPodK8sUtil
+func (m *errCreateReplicaPodK8sUtil) Name() string {
+	return "err-create-rep-pod-k8s-util"
+}
+
+// K8sClient does not support K8sClient
+func (m *errCreateReplicaPodK8sUtil) K8sClient() (K8sClient, bool) {
+	return nil, false
 }
 
 // errPodListPodOpsK8sOrch is a k8s orchestrator that returns
@@ -1747,5 +1885,177 @@ func TestGetControllerServiceReturnsOk(t *testing.T) {
 
 	if ip != "1.1.1.1" {
 		t.Errorf("TestCase: Service IP Match \n\tExpectedIP: '%s' \n\tActualIP: '%s'", "1.1.1.1", ip)
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrVsmName verifies the vsm name error
+func TestCreateReplicaPodsReturnsErrVsmName(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	_, err := mockedO.createReplicaPods(&errVsmNameVolumeProfile{}, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-vsm-name" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: 'err-vsm-name' \n\tActualErr: '%s'", err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsNoSupportReplicaImage verifies the no support
+// during invocation of volProProfile.ReplicaImage()
+func TestCreateReplicaPodsReturnsNoSupportReplicaImage(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	volProfile := &noSupportRepImgVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	n, _ := volProfile.VSMName()
+	expErr := fmt.Sprintf("VSM '%s' requires a replica container image", n)
+
+	if err != nil && err.Error() != expErr {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrReplicaImage verifies the error during
+// invocation of volProProfile.ReplicaImage()
+func TestCreateReplicaPodsReturnsErrReplicaImage(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	volProfile := &errRepImgVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-rep-image" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", "err-rep-image", err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrReplicaCount verifies error
+// during invocation of volProProfile.ReplicaCount()
+func TestCreateReplicaPodsReturnsErrReplicaCount(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	volProfile := &errRepCountVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-rep-count" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", "err-rep-count", err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrPersistentPathCount verifies error
+// during invocation of volProProfile.PersistentPathCount()
+func TestCreateReplicaPodsReturnsErrPersistentPathCount(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	volProfile := &errPersistentPathCountVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	if err != nil && err.Error() != "err-persistent-path-count" {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", "err-persistent-path-count", err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrCountMatch verifies error
+// during comparision of PersistentPathCount & ReplicaCount
+func TestCreateReplicaPodsReturnsErrCountMatch(t *testing.T) {
+	mockedO := &mockK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{},
+	}
+
+	volProfile := &errReplicaCountMatchVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	eError := "VSM 'ok-vsm-name' replica count '0' does not match persistent path count '1'"
+
+	if err != nil && err.Error() != eError {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", eError, err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsErrCreateRepPod verifies error
+// during invocation of createReplicaPod
+func TestCreateReplicaPodsReturnsErrCreateRepPod(t *testing.T) {
+	mockedO := &errCreateReplicaPodK8sOrch{
+		// Most of the errCreateReplicaPodK8sOrch's methods are delegated to
+		// k8sOrchestrator instance
+		k8sOrchestrator: k8sOrchestrator{
+			// We are only interested in modifying k8sUtlGtr property of k8sOrchestrator
+			k8sUtlGtr: &errCreateReplicaPodK8sOrch{},
+		},
+	}
+
+	volProfile := &okCreateReplicaPodVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+	if err == nil {
+		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
+	}
+
+	eError := "K8s client not supported by 'err-create-rep-pod-k8s-util'"
+	if err != nil && err.Error() != eError {
+		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", eError, err.Error())
+	}
+}
+
+// TestCreateReplicaPodsReturnsOk verifies non error scenario
+func TestCreateReplicaPodsReturnsOk(t *testing.T) {
+	mockedO := &okCreatePodK8sOrch{
+		k8sOrchestrator: k8sOrchestrator{
+			k8sUtlGtr: &okCreatePodK8sOrch{},
+		},
+	}
+
+	volProfile := &okCreateReplicaPodVolumeProfile{
+		&okVsmNameVolumeProfile{},
+	}
+
+	_, err := mockedO.createReplicaPods(volProfile, "")
+
+	if err != nil {
+		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
 	}
 }
