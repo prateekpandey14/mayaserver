@@ -98,7 +98,7 @@ const (
 	// Label / Tag for a persistent volume provisioner profile's name
 	PVPProfileNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/profile-name"
 	// Label / Tag for a persistent volume provisioner's VSM name
-	PVPVSMNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/vsm-name"
+	//PVPVSMNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/vsm-name"
 	// Label / Tag for a persistent volume provisioner's persistence location
 	PVPPersistenceLocationLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistence-location"
 	// Label / Tag for a persistent volume provisioner's replica support

@@ -20,6 +20,16 @@ var (
 	orchProviderRegistry = make(map[v1.OrchProviderRegistry]OrchProviderFactory)
 )
 
+// HasOrchestrator returns true if name corresponds to an already
+// registered orchestration provider.
+func HasOrchestrator(name v1.OrchProviderRegistry) bool {
+	orchProviderRegMutex.Lock()
+	defer orchProviderRegMutex.Unlock()
+
+	_, found := orchProviderRegistry[name]
+	return found
+}
+
 // RegisterOrchestrator registers a orchestration provider by the provider's name.
 // This registers the orchestrator provider name with the provider's instance
 // creating function i.e. a Factory.
@@ -31,11 +41,13 @@ func RegisterOrchestrator(name v1.OrchProviderRegistry, oInstFactory OrchProvide
 	orchProviderRegMutex.Lock()
 	defer orchProviderRegMutex.Unlock()
 
-	if _, found := orchProviderRegistry[name]; found {
-		glog.Fatalf("Orchestration provider '%s' was registered twice", name)
+	_, found := orchProviderRegistry[name]
+	if found {
+		glog.Fatalf("Duplicate orchestration provider '%s' registration", name)
 	}
 
-	glog.V(1).Infof("Registered '%s' as orchestration provider", name)
+	//glog.V(1).Infof("Registered '%s' as orchestration provider", name)
+	glog.Infof("Registered '%s' as orchestration provider", name)
 	orchProviderRegistry[name] = oInstFactory
 }
 
@@ -47,7 +59,7 @@ func GetOrchestrator(name v1.OrchProviderRegistry) (OrchestratorInterface, error
 
 	oInstFactory, found := orchProviderRegistry[name]
 	if !found {
-		return nil, fmt.Errorf("'%s' is not registered as an orchestration provider", name)
+		return nil, fmt.Errorf("'%s' is not a registered orchestration provider", name)
 	}
 
 	// Orchestration provider's instance creating function is invoked here

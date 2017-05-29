@@ -220,13 +220,9 @@ func DefaultControllerCount() int {
 // NOTE:
 //    This utility function does not validate & just returns if not capable of
 // performing
-func VSMName(profileMap map[string]string) string {
-	if profileMap == nil {
-		return ""
-	}
-
-	// Extract VSM name
-	return profileMap[string(PVPVSMNameLbl)]
+func VSMName(pvcName string) string {
+	// Name of PVC is the name of VSM
+	return pvcName
 }
 
 // OrchProfileName will fetch the value specified against persistent volume's
@@ -269,10 +265,10 @@ func NSDef() string {
 
 // PodName will fetch the value specified against persistent volume
 // VSM name if available otherwise will return blank.
-func PodName(profileMap map[string]string) string {
-	// Extract VSM name
-	return VSMName(profileMap)
-}
+//func PodName(profileMap map[string]string) string {
+// Extract VSM name
+//	return VSMName(profileMap)
+//}
 
 // InCluster will fetch the value specified against orchestration provider
 // in-cluster flag if available otherwise will return blank.

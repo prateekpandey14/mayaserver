@@ -6,10 +6,12 @@ import (
 	"log"
 	"sync"
 
+	"github.com/openebs/mayaserver/lib/api/v1"
 	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 	v1nomad "github.com/openebs/mayaserver/lib/api/v1/nomad"
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/orchprovider"
+	"github.com/openebs/mayaserver/lib/orchprovider/k8s"
 	"github.com/openebs/mayaserver/lib/orchprovider/nomad"
 	"github.com/openebs/mayaserver/lib/volumeprovisioner"
 	"github.com/openebs/mayaserver/lib/volumeprovisioner/jiva"
@@ -97,6 +99,9 @@ func (ms *MayaApiServer) BootstrapPlugins() error {
 	//    In other words a particular volume plugin may have two
 	// running instances pointing to different regions.
 
+	// TODO
+	// Deprecate
+	// Old way to register
 	found := orchprovider.IsOrchProvider(v1nomad.DefaultNomadPluginName)
 	if !found {
 		orchprovider.RegisterOrchProvider(
@@ -127,6 +132,19 @@ func (ms *MayaApiServer) BootstrapPlugins() error {
 	_, err = volumeprovisioner.InitVolumePlugin(v1jiva.DefaultJivaVolumePluginName, "", jivaAspect)
 	if err != nil {
 		return err
+	}
+
+	// New way to register orchestrator(s)
+	isK8sOrchReg := orchprovider.HasOrchestrator(v1.K8sOrchestrator)
+	if !isK8sOrchReg {
+		orchprovider.RegisterOrchestrator(
+			// Registration entry when Kubernetes is the orchestrator provider plugin
+			v1.K8sOrchestrator,
+			// Below is a callback function that creates a new instance of Kubernetes
+			// orchestration provider
+			func(label v1.NameLabel, name v1.OrchProviderRegistry) (orchprovider.OrchestratorInterface, error) {
+				return k8s.NewK8sOrchestrator(label, name)
+			})
 	}
 
 	return nil

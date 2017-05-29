@@ -116,9 +116,10 @@ func TestAddStorage(t *testing.T) {
 	for _, c := range cases {
 
 		pvc := &v1.PersistentVolumeClaim{}
-		pvc.Labels = map[string]string{
-			string(v1.PVPVSMNameLbl): c.vsmname,
-		}
+		pvc.Name = c.vsmname
+		//pvc.Labels = map[string]string{
+		//	string(v1.PVPVSMNameLbl): c.vsmname,
+		//}
 
 		volP, _ := volProfile.GetDefaultVolProProfile(pvc)
 
@@ -176,8 +177,9 @@ func (m *mockK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile)
 
 	// mockK8sUtil is instantiated based on a 'Value Based Test' record/row
 	return &mockK8sUtil{
-		name:               pvc.Labels[string(testK8sUtlNameLbl)],
-		vsmName:            pvc.Labels[string(v1.PVPVSMNameLbl)],
+		name: pvc.Labels[string(testK8sUtlNameLbl)],
+		//vsmName:            pvc.Labels[string(v1.PVPVSMNameLbl)],
+		vsmName:            pvc.Name,
 		kcSupport:          pvc.Labels[string(testK8sClientSupportLbl)],
 		ns:                 pvc.Labels[string(v1.OrchNSLbl)],
 		injectNSErr:        pvc.Labels[string(testK8sInjectNSErrLbl)],
@@ -477,9 +479,10 @@ func TestAddStorageWithMocks(t *testing.T) {
 		//    This is just for testing purposes.
 		// PVC is never meant to be used in this manner.
 		pvc := &v1.PersistentVolumeClaim{}
+		pvc.Name = c.vsmName
 		pvc.Labels = map[string]string{
-			string(testK8sUtlNameLbl):            c.kUtlName,
-			string(v1.PVPVSMNameLbl):             c.vsmName,
+			string(testK8sUtlNameLbl): c.kUtlName,
+			//string(v1.PVPVSMNameLbl):             c.vsmName,
 			string(testK8sClientSupportLbl):      c.kcSupport,
 			string(v1.OrchNSLbl):                 c.ns,
 			string(testK8sInjectNSErrLbl):        c.injectNSErr,

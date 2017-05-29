@@ -14,6 +14,11 @@ import (
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 )
 
+// TODO
+// NOTE:
+//    This does not work. The bootstraping is done in server/server.go
+// If self-registration is not feasible then remove this altogether.
+//
 // The registration logic for the kubernetes as orchestrator provider plugin
 //
 // NOTE:

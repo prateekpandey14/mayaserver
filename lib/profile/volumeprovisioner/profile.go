@@ -194,8 +194,9 @@ func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error
 // VSMName gets the name of the VSM
 // Operator must provide this.
 func (pp *pvcVolProProfile) VSMName() (string, error) {
-	// Extract the VSM name from pvc
-	vsmName := v1.VSMName(pp.pvc.Labels)
+	// Extract the VSM name from PVC
+	// Name of PVC is the name of VSM
+	vsmName := v1.VSMName(pp.pvc.Name)
 
 	if vsmName == "" {
 		return "", fmt.Errorf("Missing VSM name in '%s:%s'", pp.Label(), pp.Name())
