@@ -197,6 +197,7 @@ func (c *UpCommand) setupMayaServer(mconfig *config.MayaConfig, logOutput io.Wri
 	return nil
 }
 
+// Run does tasks related to mayaserver.
 func (c *UpCommand) Run(args []string) int {
 	c.Ui = &cli.PrefixedUi{
 		OutputPrefix: "==> ",
@@ -369,10 +370,12 @@ func (c *UpCommand) handleReload(mconfig *config.MayaConfig) *config.MayaConfig 
 	return newConf
 }
 
+// Synopsis returns that maya api server started 
 func (c *UpCommand) Synopsis() string {
 	return "Starts maya api server"
 }
 
+// UpCommand.Help returns the various help tags and other options.
 func (c *UpCommand) Help() string {
 	helpText := `
 Usage: m-apiserver up [options]

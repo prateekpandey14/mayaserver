@@ -15,10 +15,11 @@ type VersionCommand struct {
 	Ui                cli.Ui
 }
 
+// Help returns empty string
 func (c *VersionCommand) Help() string {
 	return ""
 }
-
+// Run displays the m-apiserver version details
 func (c *VersionCommand) Run(_ []string) int {
 	var versionString bytes.Buffer
 
@@ -35,6 +36,7 @@ func (c *VersionCommand) Run(_ []string) int {
 	return 0
 }
 
+// Synopsis return string
 func (c *VersionCommand) Synopsis() string {
 	return "Prints maya api server's version"
 }
