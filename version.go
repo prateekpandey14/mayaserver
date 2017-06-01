@@ -3,6 +3,7 @@ package main
 // GitCommit that was compiled.
 // This will be filled in by the compiler.
 var GitCommit string
+
 // GitDescribe describe a commit.
 var GitDescribe string
 

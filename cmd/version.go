@@ -19,6 +19,7 @@ type VersionCommand struct {
 func (c *VersionCommand) Help() string {
 	return ""
 }
+
 // Run displays the m-apiserver version details
 func (c *VersionCommand) Run(_ []string) int {
 	var versionString bytes.Buffer

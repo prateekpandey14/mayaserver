@@ -24,11 +24,11 @@ type FlagSetFlags uint
 
 const (
 	// FlagSetNone sets FlagSetFlags to 0
-	FlagSetNone    FlagSetFlags = 0
-        // FlagSetClient sets FlagSetFlags to 1 and varies 
-	FlagSetClient  FlagSetFlags = 1 << iota
-        // FlagSetDefault sets default value
-	FlagSetDefault              = FlagSetClient
+	FlagSetNone FlagSetFlags = 0
+	// FlagSetClient sets FlagSetFlags to 1 and varies
+	FlagSetClient FlagSetFlags = 1 << iota
+	// FlagSetDefault sets default value
+	FlagSetDefault = FlagSetClient
 )
 
 // Meta contains the meta-options and functionality that nearly every
