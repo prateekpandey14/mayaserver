@@ -12,8 +12,10 @@ import (
 	//k8sApiMetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	k8sApi "k8s.io/client-go/pkg/api"
 	k8sApiv1 "k8s.io/client-go/pkg/api/v1"
+	k8sApisExtnsV1Beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
 	watch "k8s.io/client-go/pkg/watch"
 	"k8s.io/client-go/rest"
@@ -271,6 +273,10 @@ func (m *mockK8sUtil) Services() (k8sCoreV1.ServiceInterface, error) {
 	}
 }
 
+func (m *mockK8sUtil) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return nil, nil
+}
+
 // mockPodOps implements k8sCoreV1.PodInterface and hence provides
 // necessary mock path
 type mockPodOps struct {
@@ -392,141 +398,6 @@ func (m *mockSvcOps) ProxyGet(scheme, name, port, path string, params map[string
 	return nil
 }
 
-// TestAddStorageWithMocks will verify the correctness of AddStorage() method of
-// k8sOrchestrator with the help of mock structures.
-func TestAddStorageWithMocks(t *testing.T) {
-
-	mockedO := &mockK8sOrch{
-		// We are not going by the usual instantiation technique for k8sOrchestrator
-		// Below style is to inject our mock
-		k8sOrchestrator: k8sOrchestrator{
-			label: v1.NameLabel("mock-orch-lbl"),
-			name:  v1.OrchProviderRegistry("mock-k8s-orch"),
-			// mockK8sOrch is also a k8sUtilInterface implementor
-			k8sUtlGtr: &mockK8sOrch{},
-		},
-	}
-
-	// NOTE:
-	//    WATCH OUT: The order of entries are very important here
-	cases := []struct {
-		kUtlName           string
-		vsmName            string
-		kcSupport          string
-		ns                 string
-		injectNSErr        string
-		inCluster          string
-		injectInClusterErr string
-		injectPodErr       string
-		injectSvcErr       string
-		injectVsm          string
-		resultingErr       string
-	}{
-		{"mock-k8s-util", // kUtlName
-			"",        // vsmName
-			"true",    // kcSupport truthy
-			"mock-ns", // ns
-			"",        // injectNSErr Msg
-			"",        // inCluster
-			"",        // injectInClusterErr Msg
-			"",        // injectPodErr Msg
-			"",        // injectSvcErr Msg
-			"false",   // injectVsm
-			"Missing VSM name in 'volumeprovisioner.mapi.openebs.io/profile-name:pvc'", //resultingErr Msg
-		},
-		{"mock-k8s-util", // kUtlName
-			"mock-vsm",     // vsmName
-			"true",         // kcSupport truthy
-			"mock-ns",      // ns
-			"",             // injectNSErr Msg
-			"true",         // inCluster truthy
-			"",             // injectInClusterErr Msg
-			"mock-pod-err", // injectPodErr Msg
-			"",             // injectSvcErr Msg
-			"false",        // injectVsm
-			"mock-pod-err", // resultingErr Msg
-		},
-		{"mock-k8s-util", // kUtlName
-			"mock-vsm",     // vsmName
-			"true",         // kcSupport truthy
-			"mock-ns",      //ns
-			"",             // injectNSErr Msg
-			"true",         // inCluster truthy
-			"",             // injectInClusterErr Msg
-			"",             // injectPodErr Msg
-			"mock-svc-err", // injectSvcErr Msg
-			"false",        // injectVsm
-			"mock-svc-err", // resultingErr Msg
-		},
-		{"mock-k8s-util", // kUtlName
-			"mock-vsm", // vsmName
-			"true",     // kcSupport truthy
-			"mock-ns",  // ns
-			"",         // injectNSErr Msg
-			"true",     // inCluster truthy
-			"",         // injectInClusterErr Msg
-			"",         // injectPodErr Msg
-			"",         // injectSvcErr Msg
-			"true",     // injectVsm
-			"",         // resultingErr Msg
-		},
-	}
-
-	for i, c := range cases {
-		// We will use pvc to implement VALUE BASED TESTING ;)
-		//
-		// NOTE:
-		//    This is just for testing purposes.
-		// PVC is never meant to be used in this manner.
-		pvc := &v1.PersistentVolumeClaim{}
-		pvc.Name = c.vsmName
-		pvc.Labels = map[string]string{
-			string(testK8sUtlNameLbl): c.kUtlName,
-			//string(v1.PVPVSMNameLbl):             c.vsmName,
-			string(testK8sClientSupportLbl):      c.kcSupport,
-			string(v1.OrchNSLbl):                 c.ns,
-			string(testK8sInjectNSErrLbl):        c.injectNSErr,
-			string(testK8sInClusterLbl):          c.inCluster,
-			string(testK8sInjectInClusterErrLbl): c.injectInClusterErr,
-			string(testK8sInjectPodErrLbl):       c.injectPodErr,
-			string(testK8sInjectSvcErrLbl):       c.injectSvcErr,
-			string(testK8sInjectVSMLbl):          c.injectVsm,
-			string(testK8sErrorLbl):              c.resultingErr,
-		}
-
-		volP, _ := volProfile.GetDefaultVolProProfile(pvc)
-
-		sOps, supported := mockedO.StorageOps()
-
-		if !supported {
-			t.Errorf("TestCase: #%d \n\tExpectedStorageOpsSupport: 'true' \n\tActualStorageOpsSupport: '%t'", i+1, supported)
-			continue
-		}
-
-		pvList, err := sOps.AddStorage(volP)
-
-		if err != nil && err.Error() != c.resultingErr {
-			t.Errorf("TestCase: #%d \n\tExpectedAddStorageErr: '%s' \n\tActualAddStorageErr: '%s'", i+1, c.resultingErr, err.Error())
-
-		} else if c.injectVsm == "true" && pvList == nil {
-			t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodList: 'non-nil' \n\tActualAddStoragePodList: 'nil'", i+1)
-
-		} else if c.injectVsm == "true" && len(pvList.Items) == 0 {
-			t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodCount: 'non 0' \n\tActualAddStoragePodCount: '0'", i+1)
-
-		} else if c.injectVsm == "true" {
-			count := len(pvList.Items)
-
-			for i := 0; i < count; i++ {
-				pv := pvList.Items[i]
-				if pv.Name != c.vsmName {
-					t.Errorf("TestCase: #%d \n\tExpectedAddStoragePodName: '%s' \n\tActualAddStoragePodName: '%s' \n\tGotPod: '%v'", i+1, c.vsmName, pv.Name, pv)
-				}
-			}
-		}
-	}
-}
-
 // okVsmNameVolumeProfile focusses on NOT returning any error during invocation
 // of VSMName() method
 type okVsmNameVolumeProfile struct {
@@ -560,15 +431,15 @@ func (e *errVsmNameVolumeProfile) VSMName() (string, error) {
 	return "", fmt.Errorf("err-vsm-name")
 }
 
-// TestCreateControllerPodReturnsErrVsmName returns error while invoking
-// createControllerPod(). This error is due to invocation of VSMName() within
-// createControllerPod().
-func TestCreateControllerPodReturnsErrVsmName(t *testing.T) {
+// TestCreateControllerDeploymentReturnsErrVsmName returns error while invoking
+// createControllerDeployment(). This error is due to invocation of VSMName()
+// within createControllerDeployment().
+func TestCreateControllerDeploymentReturnsErrVsmName(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
 
-	_, err := mockedO.createControllerPod(&errVsmNameVolumeProfile{})
+	_, err := mockedO.createControllerDeployment(&errVsmNameVolumeProfile{})
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -589,10 +460,10 @@ func (e *errCtrlImgVolumeProfile) ControllerImage() (string, bool, error) {
 	return "", true, fmt.Errorf("err-ctrl-img")
 }
 
-// TestCreateControllerPodReturnsErrCtrlImg returns error while invoking
-// createControllerPod(). This error is due to invocation of ControllerImage() within
-// createControllerPod().
-func TestCreateControllerPodReturnsErrCtrlImg(t *testing.T) {
+// TestCreateControllerDeploymentReturnsErrCtrlImg returns error while invoking
+// createControllerDeployment(). This error is due to invocation of
+// ControllerImage() within createControllerDeployment().
+func TestCreateControllerDeploymentReturnsErrCtrlImg(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -601,7 +472,7 @@ func TestCreateControllerPodReturnsErrCtrlImg(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createControllerPod(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -734,10 +605,10 @@ func (e *okCreateReplicaPodVolumeProfile) PersistentPathCount() (int, error) {
 	return 2, nil
 }
 
-// TestCreateControllerPodReturnsNoSupportCtrlImg returns not supported while
-// invoking createControllerPod(). This error is due to invocation of
-// ControllerImage() within createControllerPod().
-func TestCreateControllerPodReturnsNoSupportCtrlImg(t *testing.T) {
+// TestCreateControllerDeploymentReturnsNoSupportCtrlImg returns not supported while
+// invoking createControllerDeployment(). This error is due to invocation of
+// ControllerImage() within createControllerDeployment().
+func TestCreateControllerDeploymentReturnsNoSupportCtrlImg(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -746,7 +617,7 @@ func TestCreateControllerPodReturnsNoSupportCtrlImg(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createControllerPod(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -786,10 +657,10 @@ func (m *noK8sClientSupportK8sUtil) K8sClient() (K8sClient, bool) {
 	return nil, false
 }
 
-// TestCreateControllerPodReturnsNoK8sClientSupport returns K8sClient not
-// supported while invoking createControllerPod(). This error is due to
-// invocation of K8sClient() within createControllerPod().
-func TestCreateControllerPodReturnsNoK8sClientSupport(t *testing.T) {
+// TestCreateControllerDeploymentReturnsNoK8sClientSupport returns K8sClient not
+// supported while invoking createControllerDeployment(). This error is due to
+// invocation of K8sClient() within createControllerDeployment().
+func TestCreateControllerDeploymentReturnsNoK8sClientSupport(t *testing.T) {
 	mockedO := &noK8sClientSupportK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
 			k8sUtlGtr: &noK8sClientSupportK8sOrch{},
@@ -798,7 +669,7 @@ func TestCreateControllerPodReturnsNoK8sClientSupport(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, err := mockedO.createControllerPod(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -846,45 +717,47 @@ func (e *errNSK8sClient) NS() (string, error) {
 	return "", fmt.Errorf("err-ns")
 }
 
-// errPodOpsK8sClientK8sOrch is a k8s orchestrator that returns
-// errPodOpsK8sClientK8sUtil
-type errPodOpsK8sClientK8sOrch struct {
+// errDeploymentOpsK8sOrch is a k8s orchestrator that returns
+// errDeploymentOpsK8sUtil
+//type errPodOpsK8sClientK8sOrch struct {
+type errDeploymentOpsK8sOrch struct {
 	k8sOrchestrator
 }
 
-// K8sUtil returns errPodOpsK8sClientK8sUtil
-func (m *errPodOpsK8sClientK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
-	return &errPodOpsK8sClientK8sUtil{}
+// K8sUtil returns errDeploymentOpsK8sUtil
+func (m *errDeploymentOpsK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errDeploymentOpsK8sUtil{}
 }
 
-// errPodOpsK8sClientK8sUtil is a k8sUtil that provides errPodOpsK8sClient
-type errPodOpsK8sClientK8sUtil struct {
+// errDeploymentOpsK8sUtil is a k8sUtil that provides errDeploymentOpsK8sClient
+type errDeploymentOpsK8sUtil struct {
 	K8sUtilInterface
 }
 
 // Name returns the name of errPodOpsK8sClientK8sUtil
-func (m *errPodOpsK8sClientK8sUtil) Name() string {
-	return "err-pod-ops-k8s-client-k8s-util"
+func (m *errDeploymentOpsK8sUtil) Name() string {
+	return "err-deployment-ops-k8s-util"
 }
 
 // K8sClient does not support K8sClient
-func (m *errPodOpsK8sClientK8sUtil) K8sClient() (K8sClient, bool) {
-	return &errPodOpsK8sClient{}, true
+func (m *errDeploymentOpsK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errDeploymentOpsK8sClient{}, true
 }
 
-// errPodOpsK8sClient is a K8sClient that returns error during Pods() invocation
-type errPodOpsK8sClient struct {
+// errDeploymentOpsK8sClient is a K8sClient that returns error during Deployment()
+// invocation
+type errDeploymentOpsK8sClient struct {
 	K8sClient
 }
 
 // NS will not return any error
-func (e *errPodOpsK8sClient) NS() (string, error) {
+func (e *errDeploymentOpsK8sClient) NS() (string, error) {
 	return "ok-ns", nil
 }
 
-// Pods returns an error
-func (e *errPodOpsK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
-	return nil, fmt.Errorf("err-pod-ops")
+// DeploymentOps returns an error
+func (e *errDeploymentOpsK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return nil, fmt.Errorf("err-deployment-ops")
 }
 
 // errSvcGetK8sOrch is a k8s orchestrator that returns
@@ -1026,45 +899,46 @@ func (m *errCreateReplicaPodK8sUtil) K8sClient() (K8sClient, bool) {
 	return nil, false
 }
 
-// errPodListPodOpsK8sOrch is a k8s orchestrator that returns
-// errPodListPodOpsK8sUtil
-type errPodListPodOpsK8sOrch struct {
+// errDeploymentListK8sOrch is a k8s orchestrator that returns
+// errDeploymentListK8sUtil
+//type errPodListPodOpsK8sOrch struct {
+type errDeploymentListK8sOrch struct {
 	k8sOrchestrator
 }
 
 // K8sUtil returns errPodListPodOpsK8sUtil
-func (m *errPodListPodOpsK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
-	return &errPodListPodOpsK8sUtil{}
+func (m *errDeploymentListK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errDeploymentListK8sUtil{}
 }
 
-// errPodListPodOpsK8sUtil is a k8sUtil that provides errPodListPodOpsK8sClient
-type errPodListPodOpsK8sUtil struct {
+// errDeploymentListK8sUtil is a k8sUtil that provides errDeploymentListK8sClient
+type errDeploymentListK8sUtil struct {
 	K8sUtilInterface
 }
 
-// Name returns the name of errPodListPodOpsK8sUtil
-func (m *errPodListPodOpsK8sUtil) Name() string {
-	return "err-pod-list-pod-ops-k8s-util"
+// Name returns the name of errDeploymentListK8sUtil
+func (m *errDeploymentListK8sUtil) Name() string {
+	return "err-deployment-list-k8s-util"
 }
 
 // K8sClient does not support K8sClient
-func (m *errPodListPodOpsK8sUtil) K8sClient() (K8sClient, bool) {
-	return &errPodListPodOpsK8sClient{}, true
+func (m *errDeploymentListK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errDeploymentListK8sClient{}, true
 }
 
-// errPodListPodOpsK8sClient is a K8sClient that returns errPodListPodOps
-type errPodListPodOpsK8sClient struct {
+// errDeploymentListK8sClient is a K8sClient that returns errPodListPodOps
+type errDeploymentListK8sClient struct {
 	K8sClient
 }
 
 // NS will not return any error
-func (e *errPodListPodOpsK8sClient) NS() (string, error) {
+func (e *errDeploymentListK8sClient) NS() (string, error) {
 	return "ok-ns", nil
 }
 
-// Pods returns an instance of errPodListPodOps
-func (e *errPodListPodOpsK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
-	return &errPodListPodOps{}, nil
+// Pods returns an instance of errDeploymentListDeploymentOps
+func (e *errDeploymentListK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return &errDeploymentListDeploymentOps{}, nil
 }
 
 // errSvcOpsK8sOrch is a k8s orchestrator that returns
@@ -1109,6 +983,17 @@ func (e *errSvcOpsK8sClient) Services() (k8sCoreV1.ServiceInterface, error) {
 	return nil, fmt.Errorf("err-svc-ops")
 }
 
+// errDeploymentListDeploymentOps is an instance of
+// k8sExtnsV1Beta1.DeploymentInterface that returns error during List invocation
+type errDeploymentListDeploymentOps struct {
+	k8sExtnsV1Beta1.DeploymentInterface
+}
+
+// List retuns an error
+func (e *errDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+	return nil, fmt.Errorf("err-deployment-list")
+}
+
 // errPodListPodOps is an instance of k8sCoreV1.PodInterface that returns error
 // during List invocation
 type errPodListPodOps struct {
@@ -1118,6 +1003,71 @@ type errPodListPodOps struct {
 // List retuns an error
 func (e *errPodListPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
 	return nil, fmt.Errorf("err-pod-list")
+}
+
+// errMissDeploymentListK8sOrch is a k8s orchestrator that returns
+// errMissDeploymentListK8sUtil
+type errMissDeploymentListK8sOrch struct {
+	k8sOrchestrator
+}
+
+// K8sUtil returns errMissDeploymentListK8sUtil
+func (m *errMissDeploymentListK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errMissDeploymentListK8sUtil{}
+}
+
+// errMissDeploymentListK8sUtil is a k8sUtil that provides
+// errMissDeploymentListK8sClient
+type errMissDeploymentListK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of errMissDeploymentListK8sUtil
+func (m *errMissDeploymentListK8sUtil) Name() string {
+	return "err-miss-deployment-list-k8s-util"
+}
+
+// K8sClient returns an instance of errMissDeploymentListK8sClient
+func (m *errMissDeploymentListK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errMissDeploymentListK8sClient{}, true
+}
+
+// errMissDeploymentListK8sClient is a K8sClient that returns
+// errMissDeploymentListDeploymentOps
+type errMissDeploymentListK8sClient struct {
+	K8sClient
+}
+
+// NS will not return any error
+func (e *errMissDeploymentListK8sClient) NS() (string, error) {
+	return "ok-ns", nil
+}
+
+// DeploymentOps returns an instance of errMissDeploymentListDeploymentOps
+func (e *errMissDeploymentListK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return &errMissDeploymentListDeploymentOps{}, nil
+}
+
+// errMissDeploymentListDeploymentOps is an instance of
+// k8sExtnsV1Beta1.DeploymentInterface that returns a list of deployments which
+// are not expected during List invocation
+type errMissDeploymentListDeploymentOps struct {
+	k8sExtnsV1Beta1.DeploymentInterface
+}
+
+// List retuns a list of deployments which are not expected
+func (e *errMissDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+	d := k8sApisExtnsV1Beta1.Deployment{}
+	d.Name = "err-deployment-list"
+	d.Labels = map[string]string{
+		"err-key": "err-val",
+	}
+
+	dl := &k8sApisExtnsV1Beta1.DeploymentList{
+		Items: []k8sApisExtnsV1Beta1.Deployment{d},
+	}
+
+	return dl, nil
 }
 
 // errPodListMissK8sOrch is a k8s orchestrator that returns
@@ -1180,6 +1130,58 @@ func (e *errPodListMissPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodLis
 	}
 
 	return l, nil
+}
+
+// errNilDeploymentListK8sOrch is a k8s orchestrator that returns
+// errNilDeploymentListK8sUtil
+type errNilDeploymentListK8sOrch struct {
+	k8sOrchestrator
+}
+
+// K8sUtil returns errNilDeploymentListK8sUtil
+func (m *errNilDeploymentListK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &errNilDeploymentListK8sUtil{}
+}
+
+// errNilDeploymentListK8sUtil is a k8sUtil that provides errNilDeploymentListK8sClient
+type errNilDeploymentListK8sUtil struct {
+	K8sUtilInterface
+}
+
+// Name returns the name of errNilDeploymentListK8sUtil
+func (m *errNilDeploymentListK8sUtil) Name() string {
+	return "err-nil-deployment-list-k8s-util"
+}
+
+// K8sClient returns an instance of errNilDeploymentListK8sClient
+func (m *errNilDeploymentListK8sUtil) K8sClient() (K8sClient, bool) {
+	return &errNilDeploymentListK8sClient{}, true
+}
+
+// errNilDeploymentListK8sClient is a K8sClient that returns errNilDeploymentListDeploymentOps
+type errNilDeploymentListK8sClient struct {
+	K8sClient
+}
+
+// NS will not return any error
+func (e *errNilDeploymentListK8sClient) NS() (string, error) {
+	return "ok-ns", nil
+}
+
+// DeploymentOps returns an instance of errNilDeploymentListDeploymentOps
+func (e *errNilDeploymentListK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return &errNilDeploymentListDeploymentOps{}, nil
+}
+
+// errNilDeploymentListDeploymentOps is an instance of
+// k8sExtnsV1Beta1.DeploymentInterface that returns nil during List invocation
+type errNilDeploymentListDeploymentOps struct {
+	k8sExtnsV1Beta1.DeploymentInterface
+}
+
+// List retuns nil
+func (e *errNilDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+	return nil, nil
 }
 
 // errPodListNilK8sOrch is a k8s orchestrator that returns
@@ -1275,6 +1277,32 @@ func (e *okReadStorageK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
 	return &okReadStoragePodOps{}, nil
 }
 
+// DeploymentOps returns an instance of okReadStoragePodOps
+func (e *okReadStorageK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return &okReadStorageDeploymentOps{}, nil
+}
+
+// okReadStorageDeploymentOps is an instance of k8sCoreV1.PodInterface that
+// returns a list of deployments that are expected during List invocation
+type okReadStorageDeploymentOps struct {
+	k8sExtnsV1Beta1.DeploymentInterface
+}
+
+// List retuns a list of expected deployments
+func (e *okReadStorageDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+	d := k8sApisExtnsV1Beta1.Deployment{}
+	d.Name = "ok-vsm-name"
+	d.Labels = map[string]string{
+		string(v1.VSMIdentifier): "ok-vsm-name",
+	}
+
+	dl := &k8sApisExtnsV1Beta1.DeploymentList{
+		Items: []k8sApisExtnsV1Beta1.Deployment{d},
+	}
+
+	return dl, nil
+}
+
 // okReadStoragePodOps is an instance of k8sCoreV1.PodInterface that returns
 // a list of pods that are expected during List invocation
 type okReadStoragePodOps struct {
@@ -1296,76 +1324,77 @@ func (e *okReadStoragePodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList
 	return l, nil
 }
 
-// TestCreateControllerPodReturnsErrPodOps returns pod operator error
-// while invoking createControllerPod(). This error is due to
-// invocation of Pods() within createControllerPod().
-func TestCreateControllerPodReturnsErrPodOps(t *testing.T) {
-	mockedO := &errPodOpsK8sClientK8sOrch{
+// TestCreateControllerDeploymentReturnsErrDeploymentOps returns Deployment
+// operator error while invoking createControllerDeployment(). This error is
+// due to invocation of DeploymentOps() within createControllerDeployment().
+func TestCreateControllerDeploymentReturnsErrDeploymentOps(t *testing.T) {
+	mockedO := &errDeploymentOpsK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errPodOpsK8sClientK8sOrch{},
+			k8sUtlGtr: &errDeploymentOpsK8sOrch{},
 		},
 	}
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, err := mockedO.createControllerPod(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
 
-	expErr := "err-pod-ops"
+	expErr := "err-deployment-ops"
 
 	if err != nil && err.Error() != expErr {
 		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
 	}
 }
 
-// okCreatePodK8sOrch is a k8s orchestrator that returns an instance of
-// okCreatePodK8sUtil
-type okCreatePodK8sOrch struct {
+// okCreateDeploymentK8sOrch is a k8s orchestrator that returns an instance of
+// okCreateDeploymentK8sUtil
+//type okCreatePodK8sOrch struct {
+type okCreateDeploymentK8sOrch struct {
 	k8sOrchestrator
 }
 
-// GetK8sUtil returns an instance of okCreatePodK8sUtil
-func (m *okCreatePodK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
-	return &okCreatePodK8sUtil{}
+// GetK8sUtil returns an instance of okCreateDeploymentK8sUtil
+func (m *okCreateDeploymentK8sOrch) GetK8sUtil(volProfile volProfile.VolumeProvisionerProfile) K8sUtilInterface {
+	return &okCreateDeploymentK8sUtil{}
 }
 
-// okCreatePodK8sUtil is a k8sUtil that returns an instance of
-// okCreatePodK8sClient
-type okCreatePodK8sUtil struct {
+// okCreateDeploymentK8sUtil is a k8sUtil that returns an instance of
+// okCreateDeploymentK8sClient
+type okCreateDeploymentK8sUtil struct {
 	K8sUtilInterface
 }
 
 // Name returns the name of okCreatePodK8sUtil
-func (m *okCreatePodK8sUtil) Name() string {
-	return "ok-create-pod-k8s-util"
+func (m *okCreateDeploymentK8sUtil) Name() string {
+	return "ok-create-deployment-k8s-util"
 }
 
-// K8sClient returns an instance of okCreatePodK8sClient
-func (m *okCreatePodK8sUtil) K8sClient() (K8sClient, bool) {
-	return &okCreatePodK8sClient{}, true
+// K8sClient returns an instance of okCreateDeploymentK8sClient
+func (m *okCreateDeploymentK8sUtil) K8sClient() (K8sClient, bool) {
+	return &okCreateDeploymentK8sClient{}, true
 }
 
-// okCreatePodK8sClient is a K8sClient that returns okCreatePodPodOps
-type okCreatePodK8sClient struct {
+// okCreateDeploymentK8sClient is a K8sClient that returns okDeploymentOps
+type okCreateDeploymentK8sClient struct {
 	K8sClient
 }
 
-// Pods returns an instance of okCreatePodPodOps
-func (e *okCreatePodK8sClient) Pods() (k8sCoreV1.PodInterface, error) {
-	return &okCreatePodPodOps{}, nil
+// DeploymentOps returns an instance of okDeploymentOps
+func (e *okCreateDeploymentK8sClient) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	return &okDeploymentOps{}, nil
 }
 
-// okCreatePodPodOps is a k8sCoreV1.PodInterface that does not return error
-// during create()
-type okCreatePodPodOps struct {
-	k8sCoreV1.PodInterface
+// okDeploymentOps is a k8sExtnsV1Beta1.DeploymentInterface that does not return
+// error during create()
+type okDeploymentOps struct {
+	k8sExtnsV1Beta1.DeploymentInterface
 }
 
-// Create returns the pod that it receives without any error
-func (m *okCreatePodPodOps) Create(pod *k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
-	return pod, nil
+// Create returns the deployment that it receives without any error
+func (m *okDeploymentOps) Create(deploy *k8sApisExtnsV1Beta1.Deployment) (*k8sApisExtnsV1Beta1.Deployment, error) {
+	return deploy, nil
 }
 
 // okCreateServiceK8sOrch is a k8s orchestrator that returns an
@@ -1417,41 +1446,41 @@ func (m *okCreateServiceSvcOps) Create(svc *k8sApiv1.Service) (*k8sApiv1.Service
 	return svc, nil
 }
 
-// TestCreateControllerPodReturnsOk returns a valid pod while invoking
-// createControllerPod().
-func TestCreateControllerPodReturnsOk(t *testing.T) {
-	mockedO := &okCreatePodK8sOrch{
+// TestCreateControllerDeploymentReturnsOk returns a valid pod while invoking
+// createControllerDeployment().
+func TestCreateControllerDeploymentReturnsOk(t *testing.T) {
+	mockedO := &okCreateDeploymentK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &okCreatePodK8sOrch{},
+			k8sUtlGtr: &okCreateDeploymentK8sOrch{},
 		},
 	}
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	cp, err := mockedO.createControllerPod(volProfile)
+	cp, err := mockedO.createControllerDeployment(volProfile)
 
 	if err != nil {
 		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
 	}
 
-	// Verify the pod kind
+	// Verify the deployment kind
 	if cp.Kind != string(v1.K8sKindDeployment) {
 		t.Errorf("TestCase: Kind Match \n\tExpectedKind: '%s' \n\tActualKind: '%s'", v1.K8sKindDeployment, cp.Kind)
 	}
 
-	// Verify the pod version
-	if cp.APIVersion != string(v1.K8sPodVersion) {
+	// Verify the deployment version
+	if cp.APIVersion != string(v1.K8sDeploymentVersion) {
 		t.Errorf("TestCase: Pod Version Match \n\tExpectedAPIVersion: '%s' \n\tActualAPIVersion: '%s'", v1.K8sPodVersion, cp.APIVersion)
 	}
 
-	// Verify the pod name
+	// Verify the deployment name
 	vsm, _ := volProfile.VSMName()
-	ePodName := vsm + string(v1.ControllerSuffix)
-	if cp.Name != ePodName {
-		t.Errorf("TestCase: Pod Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", ePodName, cp.Name)
+	eDeployName := vsm + string(v1.ControllerSuffix)
+	if cp.Name != eDeployName {
+		t.Errorf("TestCase: Deployment Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", eDeployName, cp.Name)
 	}
 
-	// Verify the pod labels
+	// Verify the deployment labels
 	eLblStr := string(v1.VSMSelectorPrefix) + vsm
 	eLbl, _ := labels.Parse(eLblStr)
 	if !eLbl.Matches(labels.Set(cp.Labels)) {
@@ -1459,28 +1488,28 @@ func TestCreateControllerPodReturnsOk(t *testing.T) {
 	}
 
 	// Verify no. of containers within the pod
-	if len(cp.Spec.Containers) != 1 {
-		t.Errorf("TestCase: No. of Containers \n\tExpectedContainers: '1' \n\tActualContainers: '%d'", len(cp.Spec.Containers))
+	if len(cp.Spec.Template.Spec.Containers) != 1 {
+		t.Errorf("TestCase: No. of Containers \n\tExpectedContainers: '1' \n\tActualContainers: '%d'", len(cp.Spec.Template.Spec.Containers))
 	}
 
 	// Verify no. of ports within the container
-	if len(cp.Spec.Containers[0].Ports) != 2 {
-		t.Errorf("TestCase: No. of Ports \n\tExpectedPorts: '2' \n\tActualPorts: '%d'", len(cp.Spec.Containers[0].Ports))
+	if len(cp.Spec.Template.Spec.Containers[0].Ports) != 2 {
+		t.Errorf("TestCase: No. of Ports \n\tExpectedPorts: '2' \n\tActualPorts: '%d'", len(cp.Spec.Template.Spec.Containers[0].Ports))
 	}
 
 	// Verify container name
-	if cp.Spec.Containers[0].Name != vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix) {
-		t.Errorf("TestCase: Container Name \n\tExpectedName: '%s' \n\tActualName: '%s'", vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix), cp.Spec.Containers[0].Name)
+	if cp.Spec.Template.Spec.Containers[0].Name != vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix) {
+		t.Errorf("TestCase: Container Name \n\tExpectedName: '%s' \n\tActualName: '%s'", vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix), cp.Spec.Template.Spec.Containers[0].Name)
 	}
 
 	// Verify controller launch command
-	if !reflect.DeepEqual(cp.Spec.Containers[0].Command, v1.JivaCtrlCmd) {
-		t.Errorf("TestCase: Controller Launch Cmd \n\tExpectedCmd: '%s' \n\tActualCmd: '%s'", v1.JivaCtrlCmd, cp.Spec.Containers[0].Command)
+	if !reflect.DeepEqual(cp.Spec.Template.Spec.Containers[0].Command, v1.JivaCtrlCmd) {
+		t.Errorf("TestCase: Controller Launch Cmd \n\tExpectedCmd: '%s' \n\tActualCmd: '%s'", v1.JivaCtrlCmd, cp.Spec.Template.Spec.Containers[0].Command)
 	}
 
 	// Verify controller launch arguments
-	if !reflect.DeepEqual(cp.Spec.Containers[0].Args, v1.JivaCtrlArgs) {
-		t.Errorf("TestCase: Controller Launch Args \n\tExpectedArgs: '%s' \n\tActualArgs: '%s'", v1.JivaCtrlArgs, cp.Spec.Containers[0].Args)
+	if !reflect.DeepEqual(cp.Spec.Template.Spec.Containers[0].Args, v1.JivaCtrlArgs) {
+		t.Errorf("TestCase: Controller Launch Args \n\tExpectedArgs: '%s' \n\tActualArgs: '%s'", v1.JivaCtrlArgs, cp.Spec.Template.Spec.Containers[0].Args)
 	}
 }
 
@@ -1547,9 +1576,9 @@ func TestReadStorageReturnsErrNS(t *testing.T) {
 
 // TestReadStorageReturnsErrPodOps verifies the pod operator error
 func TestReadStorageReturnsErrPodOps(t *testing.T) {
-	mockedO := &errPodOpsK8sClientK8sOrch{
+	mockedO := &errDeploymentOpsK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errPodOpsK8sClientK8sOrch{},
+			k8sUtlGtr: &errDeploymentOpsK8sOrch{},
 		},
 	}
 
@@ -1560,18 +1589,19 @@ func TestReadStorageReturnsErrPodOps(t *testing.T) {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
 
-	expErr := "err-pod-ops"
+	expErr := "err-deployment-ops"
 
 	if err != nil && err.Error() != expErr {
 		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
 	}
 }
 
-// TestReadStorageReturnsErrPodList verifies the error during listing of pod
-func TestReadStorageReturnsErrPodList(t *testing.T) {
-	mockedO := &errPodListPodOpsK8sOrch{
+// TestReadStorageReturnsErrDeploymentList verifies the error during listing of pod
+//func TestReadStorageReturnsErrPodList(t *testing.T) {
+func TestReadStorageReturnsErrDeploymentList(t *testing.T) {
+	mockedO := &errDeploymentListK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errPodListPodOpsK8sOrch{},
+			k8sUtlGtr: &errDeploymentListK8sOrch{},
 		},
 	}
 
@@ -1582,21 +1612,22 @@ func TestReadStorageReturnsErrPodList(t *testing.T) {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
 
-	expErr := "err-pod-list"
+	expErr := "err-deployment-list"
 
 	if err != nil && err.Error() != expErr {
 		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
 	}
 }
 
-// TestReadStorageReturnsErrPodListNil verifies the nil returned during listing
-// of pod
-func TestReadStorageReturnsErrPodListNil(t *testing.T) {
-	mockedO := &errPodListNilK8sOrch{
+// TestReadStorageReturnsErrNilDeploymentList verifies the nil returned during
+// listing of deployments
+//func TestReadStorageReturnsErrPodListNil(t *testing.T) {
+func TestReadStorageReturnsErrNilDeploymentList(t *testing.T) {
+	mockedO := &errNilDeploymentListK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			label:     v1.NameLabel("err-pod-list-nil-k8s-orch-lbl"),
-			name:      v1.OrchProviderRegistry("err-pod-list-nil-k8s-orch-name"),
-			k8sUtlGtr: &errPodListNilK8sOrch{},
+			label:     v1.NameLabel("err-nil-deployment-list-k8s-orch-lbl"),
+			name:      v1.OrchProviderRegistry("err-nil-deployment-list-k8s-orch-name"),
+			k8sUtlGtr: &errNilDeploymentListK8sOrch{},
 		},
 	}
 
@@ -1614,13 +1645,14 @@ func TestReadStorageReturnsErrPodListNil(t *testing.T) {
 	}
 }
 
-// TestReadStorageReturnsErrPodMatch verifies the error due to mismatch of pods
-func TestReadStorageReturnsErrPodMatch(t *testing.T) {
-	mockedO := &errPodListMissK8sOrch{
+// TestReadStorageReturnsErrDeploymentMatch verifies the error due to mismatch
+// of deployments
+func TestReadStorageReturnsErrDeploymentMatch(t *testing.T) {
+	mockedO := &errMissDeploymentListK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			label:     v1.NameLabel("err-pod-list-miss-k8s-orch-lbl"),
-			name:      v1.OrchProviderRegistry("err-pod-list-miss-k8s-orch-name"),
-			k8sUtlGtr: &errPodListMissK8sOrch{},
+			label:     v1.NameLabel("err-miss-deployment-list-k8s-orch-lbl"),
+			name:      v1.OrchProviderRegistry("err-miss-deployment-list-k8s-orch-name"),
+			k8sUtlGtr: &errMissDeploymentListK8sOrch{},
 		},
 	}
 
@@ -1891,13 +1923,13 @@ func TestGetControllerServiceReturnsOk(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrVsmName verifies the vsm name error
-func TestCreateReplicaPodsReturnsErrVsmName(t *testing.T) {
+// TestCreateDeploymentReplicasReturnsErrVsmName verifies the vsm name error
+func TestCreateDeploymentReplicasReturnsErrVsmName(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
 
-	_, err := mockedO.createReplicaPods(&errVsmNameVolumeProfile{}, "")
+	_, err := mockedO.createDeploymentReplicas(&errVsmNameVolumeProfile{}, "")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1907,9 +1939,9 @@ func TestCreateReplicaPodsReturnsErrVsmName(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsNoSupportReplicaImage verifies the no support
+// TestCreateDeploymentReplicasReturnsNoSupportReplicaImage verifies the no support
 // during invocation of volProProfile.ReplicaImage()
-func TestCreateReplicaPodsReturnsNoSupportReplicaImage(t *testing.T) {
+func TestCreateDeploymentReplicasReturnsNoSupportReplicaImage(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -1918,7 +1950,7 @@ func TestCreateReplicaPodsReturnsNoSupportReplicaImage(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1931,9 +1963,9 @@ func TestCreateReplicaPodsReturnsNoSupportReplicaImage(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrReplicaImage verifies the error during
+// TestCreateDeploymentReplicasReturnsErrReplicaImage verifies the error during
 // invocation of volProProfile.ReplicaImage()
-func TestCreateReplicaPodsReturnsErrReplicaImage(t *testing.T) {
+func TestCreateDeploymentReplicasReturnsErrReplicaImage(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -1942,7 +1974,7 @@ func TestCreateReplicaPodsReturnsErrReplicaImage(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1952,9 +1984,9 @@ func TestCreateReplicaPodsReturnsErrReplicaImage(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrReplicaCount verifies error
+// TestCreateDeploymentReplicasReturnsErrReplicaCount verifies error
 // during invocation of volProProfile.ReplicaCount()
-func TestCreateReplicaPodsReturnsErrReplicaCount(t *testing.T) {
+func TestCreateDeploymentReplicasReturnsErrReplicaCount(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -1963,7 +1995,7 @@ func TestCreateReplicaPodsReturnsErrReplicaCount(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1973,9 +2005,9 @@ func TestCreateReplicaPodsReturnsErrReplicaCount(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrPersistentPathCount verifies error
+// TestCreateDeploymentReplicasReturnsErrPersistentPathCount verifies error
 // during invocation of volProProfile.PersistentPathCount()
-func TestCreateReplicaPodsReturnsErrPersistentPathCount(t *testing.T) {
+func TestCreateDeploymentReplicasReturnsErrPersistentPathCount(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -1984,7 +2016,7 @@ func TestCreateReplicaPodsReturnsErrPersistentPathCount(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1994,9 +2026,9 @@ func TestCreateReplicaPodsReturnsErrPersistentPathCount(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrCountMatch verifies error
+// TestCreateDeploymentReplicasReturnsErrCountMatch verifies error
 // during comparision of PersistentPathCount & ReplicaCount
-func TestCreateReplicaPodsReturnsErrCountMatch(t *testing.T) {
+func TestCreateDeploymentReplicasReturnsErrCountMatch(t *testing.T) {
 	mockedO := &mockK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{},
 	}
@@ -2005,7 +2037,7 @@ func TestCreateReplicaPodsReturnsErrCountMatch(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -2017,15 +2049,11 @@ func TestCreateReplicaPodsReturnsErrCountMatch(t *testing.T) {
 	}
 }
 
-// TestCreateReplicaPodsReturnsErrCreateRepPod verifies error
-// during invocation of createReplicaPod
-func TestCreateReplicaPodsReturnsErrCreateRepPod(t *testing.T) {
-	mockedO := &errCreateReplicaPodK8sOrch{
-		// Most of the errCreateReplicaPodK8sOrch's methods are delegated to
-		// k8sOrchestrator instance
+// TestCreateDeploymentReplicasReturnsOk verifies non error scenario
+func TestCreateDeploymentReplicasReturnsOk(t *testing.T) {
+	mockedO := &okCreateDeploymentK8sOrch{
 		k8sOrchestrator: k8sOrchestrator{
-			// We are only interested in modifying k8sUtlGtr property of k8sOrchestrator
-			k8sUtlGtr: &errCreateReplicaPodK8sOrch{},
+			k8sUtlGtr: &okCreateDeploymentK8sOrch{},
 		},
 	}
 
@@ -2033,30 +2061,7 @@ func TestCreateReplicaPodsReturnsErrCreateRepPod(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createReplicaPods(volProfile, "")
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	eError := "K8s client not supported by 'err-create-rep-pod-k8s-util'"
-	if err != nil && err.Error() != eError {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", eError, err.Error())
-	}
-}
-
-// TestCreateReplicaPodsReturnsOk verifies non error scenario
-func TestCreateReplicaPodsReturnsOk(t *testing.T) {
-	mockedO := &okCreatePodK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &okCreatePodK8sOrch{},
-		},
-	}
-
-	volProfile := &okCreateReplicaPodVolumeProfile{
-		&okVsmNameVolumeProfile{},
-	}
-
-	_, err := mockedO.createReplicaPods(volProfile, "")
+	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
 
 	if err != nil {
 		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())

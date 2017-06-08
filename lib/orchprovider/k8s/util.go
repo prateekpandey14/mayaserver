@@ -7,6 +7,7 @@ import (
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"k8s.io/client-go/kubernetes"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/rest"
 )
 
@@ -48,6 +49,9 @@ type K8sClient interface {
 	//
 	// Services provides all the CRUD operations associated w.r.t a Service
 	Services() (k8sCoreV1.ServiceInterface, error)
+
+	// DeploymentOps provides all the CRUD operations associated w.r.t a Deployment
+	DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error)
 }
 
 // k8sUtil provides the concrete implementation for below interfaces:
@@ -186,6 +190,34 @@ func (k *k8sUtil) Services() (k8sCoreV1.ServiceInterface, error) {
 	}
 
 	return cs.CoreV1().Services(ns), nil
+}
+
+// Services is a utility function that provides a instance capable of
+// executing various k8s Deployment related operations.
+func (k *k8sUtil) DeploymentOps() (k8sExtnsV1Beta1.DeploymentInterface, error) {
+	var cs *kubernetes.Clientset
+
+	inC, err := k.InCluster()
+	if err != nil {
+		return nil, err
+	}
+
+	ns, err := k.NS()
+	if err != nil {
+		return nil, err
+	}
+
+	if inC {
+		cs, err = k.inClusterCS()
+	} else {
+		cs, err = k.outClusterCS()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cs.ExtensionsV1beta1().Deployments(ns), nil
 }
 
 // inClusterCS is used to initialize and return a new http client capable

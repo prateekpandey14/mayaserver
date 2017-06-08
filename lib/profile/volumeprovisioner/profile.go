@@ -346,6 +346,9 @@ func (pp *pvcVolProProfile) ReplicaIPs() ([]string, error) {
 	return rIPsArr, nil
 }
 
+// TODO
+// Return int32 ??
+//
 // PersistentPathCount gets the count of persistent paths required for all the
 // replicas.
 //

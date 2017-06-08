@@ -326,7 +326,7 @@ func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList,
 		return nil, fmt.Errorf("Storage operations not supported in '%s:%s' '%s'", j.Label(), j.Name(), j.jivaProUtil.Name())
 	}
 
-	return storOps.ReadStorage(pvc)
+	return storOps.AddStorage(pvc)
 }
 
 // TODO

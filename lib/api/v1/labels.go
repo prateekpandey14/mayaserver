@@ -340,12 +340,16 @@ var (
 type K8sAnnotations string
 
 const (
-	// K8sKindDeployment is used to state the k8s Deployment(s)
+	// K8sKindPod is used to state the k8s Pod
+	K8sKindPod K8sAnnotations = "Pod"
+	// K8sKindDeployment is used to state the k8s Deployment
 	K8sKindDeployment K8sAnnotations = "Deployment"
-	// K8sKindService is used to state the k8s Service(s)
+	// K8sKindService is used to state the k8s Service
 	K8sKindService K8sAnnotations = "Service"
 	// K8sServiceVersion is used to state the k8s Service version
 	K8sServiceVersion K8sAnnotations = "v1"
 	// K8sPodVersion is used to state the k8s Pod version
 	K8sPodVersion K8sAnnotations = "v1"
+	// K8sDeploymentVersion is used to state the k8s Deployment version
+	K8sDeploymentVersion K8sAnnotations = "extensions/v1beta1"
 )

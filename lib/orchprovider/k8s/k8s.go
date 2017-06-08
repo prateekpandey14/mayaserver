@@ -11,7 +11,9 @@ import (
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"k8s.io/apimachinery/pkg/labels"
+	k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
+	k8sApisExtnsBeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
 // TODO
@@ -154,13 +156,14 @@ func (k *k8sOrchestrator) StorageOps() (orchprovider.StorageOps, bool) {
 
 // AddStorage will add persistent volume running as containers
 func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
+
 	// TODO
 	// This is jiva specific
 	// Move this entire logic to a separate package that will couple jiva
 	// provisioner with k8s orchestrator
 
 	// create k8s pod of persistent volume controller
-	_, err := k.createControllerPod(volProProfile)
+	_, err := k.createControllerDeployment(volProProfile)
 	if err != nil {
 		return nil, err
 	}
@@ -186,13 +189,13 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, err
 	}
 
-	// Create the k8s pod of persistent volume replica
+	// Create the k8s deployment of vsm replica
 	isRequested := volProProfile.ReqReplica()
 	if !isRequested {
 		return nil, nil
 	}
 
-	_, err = k.createReplicaPods(volProProfile, ctrlIP)
+	_, err = k.createDeploymentReplicas(volProProfile, ctrlIP)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -234,7 +237,7 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, err
 	}
 
-	pOps, err := kc.Pods()
+	dOps, err := kc.DeploymentOps()
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +249,12 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		LabelSelector: string(v1.VSMSelectorPrefix) + vsm,
 	}
 
-	podList, err := pOps.List(lOpts)
+	deployList, err := dOps.List(lOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	if podList == nil {
+	if deployList == nil {
 		return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
 	}
 
@@ -267,7 +270,7 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 	// This is the return type
 	pvl := &v1.PersistentVolumeList{}
 
-	for _, item := range podList.Items {
+	for _, item := range deployList.Items {
 		if eLbl.Matches(labels.Set(item.Labels)) {
 			pv := v1.PersistentVolume{}
 			pv.Name = item.Name
@@ -300,9 +303,9 @@ func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, b
 	return nil, false
 }
 
-// createControllerPod creates a persistent volume controller deployment in
+// createControllerDeployment creates a persistent volume controller deployment in
 // kubernetes
-func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Pod, error) {
+func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.Deployment, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -326,55 +329,125 @@ func (k *k8sOrchestrator) createControllerPod(volProProfile volProfile.VolumePro
 		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
-	// fetch pod operator
-	pOps, err := kc.Pods()
+	// fetch deployment operator
+	dOps, err := kc.DeploymentOps()
 	if err != nil {
 		return nil, err
 	}
 
-	// create persistent volume controller as a k8s pod
-	ctrl := &k8sApiV1.Pod{}
-	ctrl.Kind = string(v1.K8sKindDeployment)
-	ctrl.APIVersion = string(v1.K8sPodVersion)
-	ctrl.Name = vsm + string(v1.ControllerSuffix)
-	// Labels will provide the VSM filtering options during GET/LIST calls
-	ctrl.Labels = map[string]string{
-		string(v1.VSMIdentifier): vsm,
+	glog.Infof("Adding vsm controller for vsm 'name: %s'", vsm)
+
+	deploy := &k8sApisExtnsBeta1.Deployment{
+		ObjectMeta: k8sApiV1.ObjectMeta{
+			Name: vsm + string(v1.ControllerSuffix),
+			Labels: map[string]string{
+				string(v1.VSMIdentifier): vsm,
+			},
+		},
+		TypeMeta: k8sUnversioned.TypeMeta{
+			Kind:       string(v1.K8sKindDeployment),
+			APIVersion: string(v1.K8sDeploymentVersion),
+		},
+		Spec: k8sApisExtnsBeta1.DeploymentSpec{
+			//Replicas: &int32(1),
+			Template: k8sApiV1.PodTemplateSpec{
+				ObjectMeta: k8sApiV1.ObjectMeta{
+					Labels: map[string]string{
+						string(v1.VSMIdentifier): vsm,
+					},
+				},
+				Spec: k8sApiV1.PodSpec{
+					Containers: []k8sApiV1.Container{
+						k8sApiV1.Container{
+							Name:    vsm + string(v1.ControllerSuffix) + string(v1.ContainerSuffix),
+							Image:   cImg,
+							Command: v1.JivaCtrlCmd,
+							Args:    v1.JivaCtrlArgs,
+							Ports: []k8sApiV1.ContainerPort{
+								k8sApiV1.ContainerPort{
+									ContainerPort: v1.DefaultJivaISCSIPort(),
+								},
+								k8sApiV1.ContainerPort{
+									ContainerPort: v1.DefaultJivaAPIPort(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	// specify the controller pod's container properties
-	ctrlCon := k8sApiV1.Container{}
-	ctrlCon.Name = vsm + string(v1.ControllerSuffix) + string(v1.ContainerSuffix)
-	ctrlCon.Image = cImg
-	ctrlCon.Command = v1.JivaCtrlCmd
-	ctrlCon.Args = v1.JivaCtrlArgs
+	// create persistent volume controller as a k8s Deployment
+	//deploy := &k8sApisExtnsBeta1.Deployment{}
+	//deploy.Kind = string(v1.K8sKindDeployment)
+	//deploy.APIVersion = string(v1.K8sDeploymentVersion)
+	//deploy.Name = vsm + string(v1.ControllerSuffix)
 
-	iscsiPort := k8sApiV1.ContainerPort{}
-	iscsiPort.ContainerPort = v1.DefaultJivaISCSIPort()
+	// TODO
+	// Look into Selector property of DeploymentSpec
+	//
+	// Labels will provide the VSM filtering options during GET/LIST calls
+	//deploy.Labels = map[string]string{
+	//	string(v1.VSMIdentifier): vsm,
+	//}
 
-	apiPort := k8sApiV1.ContainerPort{}
-	apiPort.ContainerPort = v1.DefaultJivaAPIPort()
+	// Deployment Spec
+	//deploySpec := k8sApisExtnsBeta1.DeploymentSpec{}
+	//deploySpec.Replicas = 1
 
-	// Set the ports
-	ctrlCon.Ports = []k8sApiV1.ContainerPort{iscsiPort, apiPort}
+	// Pod Template Spec
+	//podTmplSpec := k8sApiV1.PodTemplateSpec{}
+	// Set pod template labels
+	//podTmplSpec.Labels = map[string]string{
+	//  string(v1.VSMIdentifier): vsm,
+	//}
 
-	ctrlSpec := k8sApiV1.PodSpec{}
-	// Set the container
-	ctrlSpec.Containers = []k8sApiV1.Container{ctrlCon}
-	// Set the pod spec
-	ctrl.Spec = ctrlSpec
+	// Pod spec
+	//podSpec = k8sApiV1.PodSpec{}
+	// specify the container properties
+	//podCon := k8sApiV1.Container{}
+	//podCon.Name = vsm + string(v1.ControllerSuffix) + string(v1.ContainerSuffix)
+	//podCon.Image = cImg
+	//podCon.Command = v1.JivaCtrlCmd
+	//podCon.Args = v1.JivaCtrlArgs
+	//iscsiPort := k8sApiV1.ContainerPort{}
+	//iscsiPort.ContainerPort = v1.DefaultJivaISCSIPort()
+	//apiPort := k8sApiV1.ContainerPort{}
+	//apiPort.ContainerPort = v1.DefaultJivaAPIPort()
+	// Set the container ports
+	//podCon.Ports = []k8sApiV1.ContainerPort{iscsiPort, apiPort}
+	// Set containers to pod spec
+	//podSpec.Containers = []k8sApiV1.Container{podCon}
+	// Set pod spec to pod template spec
+	//podTmplSpec.Spec = podSpec
+	// Set pod template to deploy spec
+	//deploySpec.Template = podTmplSpec
+	// Set the deploy spec to deploy
+	//deploy.Spec = deploySpec
 
-	// add persistent volume controller pod
-	return pOps.Create(ctrl)
+	// add persistent volume controller deployment
+	dd, err := dOps.Create(deploy)
+	if err != nil {
+		return nil, err
+	}
+
+	glog.Infof("Added vsm controller for vsm 'name: %s' as K8s 'kind: %s' 'apiversion: %s'", deploy.Name, deploy.Kind, deploy.APIVersion)
+
+	return dd, nil
 }
 
-// createReplicaPods creates one or more persistent volume replica(s)
-// deployment in Kubernetes
-func (k *k8sOrchestrator) createReplicaPods(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApiV1.Pod, error) {
+// createDeploymentReplicas creates one or more persistent volume deployment
+// replica(s) in Kubernetes
+func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApisExtnsBeta1.Deployment, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
 		return nil, err
+	}
+
+	if ctrlIP == "" {
+		return nil, fmt.Errorf("VSM controller IP is required to create replica(s) for vsm 'name: %s'", vsm)
 	}
 
 	rImg, imgSupport, err := volProProfile.ReplicaImage()
@@ -400,17 +473,103 @@ func (k *k8sOrchestrator) createReplicaPods(volProProfile volProfile.VolumeProvi
 		return nil, fmt.Errorf("VSM '%s' replica count '%d' does not match persistent path count '%d'", vsm, rCount, pCount)
 	}
 
-	for i := 1; i <= rCount; i++ {
-		_, err := k.createReplicaPod(volProProfile, ctrlIP, rImg, vsm, i, rCount)
-		if err != nil {
-			return nil, err
-		}
+	pvc, err := volProProfile.PVC()
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO
-	// This should return a list of pods
-	return nil, nil
+	// The position is always send as 1
+	// We might want to get the replica index & send it
+	// However, this does not matter if replicas are placed on different hosts !!
+	persistPath, err := volProProfile.PersistentPath(1, rCount)
+	if err != nil {
+		return nil, err
+	}
 
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s deployment operator
+	dOps, err := kc.DeploymentOps()
+	if err != nil {
+		return nil, err
+	}
+
+	glog.Infof("Adding vsm replica(s) for vsm 'name: %s'", vsm)
+
+	deploy := &k8sApisExtnsBeta1.Deployment{
+		ObjectMeta: k8sApiV1.ObjectMeta{
+			Name: vsm + string(v1.JivaReplicaSuffix),
+			Labels: map[string]string{
+				string(v1.VSMIdentifier): vsm,
+			},
+		},
+		TypeMeta: k8sUnversioned.TypeMeta{
+			Kind:       string(v1.K8sKindDeployment),
+			APIVersion: string(v1.K8sDeploymentVersion),
+		},
+		Spec: k8sApisExtnsBeta1.DeploymentSpec{
+			Replicas: v1.Replicas(rCount),
+			Template: k8sApiV1.PodTemplateSpec{
+				ObjectMeta: k8sApiV1.ObjectMeta{
+					Labels: map[string]string{
+						string(v1.VSMIdentifier): vsm,
+					},
+				},
+				Spec: k8sApiV1.PodSpec{
+					Containers: []k8sApiV1.Container{
+						k8sApiV1.Container{
+							Name:    vsm + string(v1.JivaReplicaSuffix) + string(v1.ContainerSuffix),
+							Image:   rImg,
+							Command: v1.JivaReplicaCmd,
+							Args:    v1.MakeOrDefJivaReplicaArgs(pvc.Labels, ctrlIP),
+							Ports: []k8sApiV1.ContainerPort{
+								k8sApiV1.ContainerPort{
+									ContainerPort: v1.DefaultJivaReplicaPort1(),
+								},
+								k8sApiV1.ContainerPort{
+									ContainerPort: v1.DefaultJivaReplicaPort2(),
+								},
+								k8sApiV1.ContainerPort{
+									ContainerPort: v1.DefaultJivaReplicaPort3(),
+								},
+							},
+							VolumeMounts: []k8sApiV1.VolumeMount{
+								k8sApiV1.VolumeMount{
+									Name:      v1.DefaultJivaMountName(),
+									MountPath: v1.DefaultJivaMountPath(),
+								},
+							},
+						},
+					},
+					Volumes: []k8sApiV1.Volume{
+						k8sApiV1.Volume{
+							Name: v1.DefaultJivaMountName(),
+							VolumeSource: k8sApiV1.VolumeSource{
+								HostPath: &k8sApiV1.HostPathVolumeSource{
+									Path: persistPath,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	dd, err := dOps.Create(deploy)
+	if err != nil {
+		return nil, err
+	}
+
+	glog.Infof("Added vsm replica(s) 'count: %d' for vsm 'name: %s' as K8s 'kind: %s' 'apiversion: %s'", deploy.Spec.Replicas, deploy.Name, deploy.Kind, deploy.APIVersion)
+
+	return dd, nil
 }
 
 // CreateReplicaPod creates a persistent volume replica deployment in Kubernetes
@@ -522,6 +681,12 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 		return nil, err
 	}
 
+	// TODO
+	// log levels & logging context to be taken care of
+	glog.Infof("Adding service 'vsm controller: %s'", vsm)
+
+	// TODO
+	// Code this like a golang struct template
 	// create persistent volume controller service
 	svc := &k8sApiV1.Service{}
 	svc.Kind = string(v1.K8sKindService)
@@ -550,7 +715,15 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svc.Spec = svcSpec
 
 	// add controller service
-	return sOps.Create(svc)
+	ssvc, err := sOps.Create(svc)
+
+	// TODO
+	// log levels & logging context to be taken care of
+	if err == nil {
+		glog.Infof("Service added 'vsm controller: %s' 'apiversion: %s'", vsm, svc.APIVersion)
+	}
+
+	return ssvc, err
 }
 
 // getControllerService fetches the service name & service IP address

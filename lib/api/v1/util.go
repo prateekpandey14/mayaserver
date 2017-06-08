@@ -394,7 +394,15 @@ func JivaPersistentPath(profileMap map[string]string, vsm string, position int) 
 	}
 
 	// Extract persistent path count
-	return profileMap[string(PVPPersistentPathLbl)] + "/" + vsm + string(JivaPersistentMountPathDef) + string(position)
+	// We are not using position for the time-being
+	// We may not require it probably.
+	return profileMap[string(PVPPersistentPathLbl)] + "/" + vsm + string(JivaPersistentMountPathDef)
+}
+
+// Replicas returns a pointer to an int32 of a int value
+func Replicas(rcount int) *int32 {
+	o := int32(rcount)
+	return &o
 }
 
 // TODO
@@ -403,7 +411,10 @@ func JivaPersistentPath(profileMap map[string]string, vsm string, position int) 
 // DefaultJivaPersistentPath provides the default persistent host path based on the
 // name of the VSM & replica position
 func DefaultJivaPersistentPath(vsm string, position int) string {
-	return string(JivaPersistentPathDef) + "/" + vsm + string(JivaPersistentMountPathDef) + string(position)
+	// TODO
+	// We are not using position for the time-being
+	// We may not require it probably.
+	return string(JivaPersistentPathDef) + "/" + vsm + string(JivaPersistentMountPathDef)
 }
 
 // MakeOrDefJivaReplicaArgs will set the placeholders in jiva replica args with
@@ -416,22 +427,29 @@ func DefaultJivaPersistentPath(vsm string, position int) string {
 //    This utility function does not validate & just returns if not capable of
 // performing
 func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []string {
-	if profileMap == nil || strings.TrimSpace(ctrlIP) == "" {
+	if strings.TrimSpace(ctrlIP) == "" {
 		return nil
 	}
 
-	// Extract the runtime values
-	storSize := profileMap[string(PVPStorageSizeLbl)]
+	storSize := ""
+	if profileMap == nil {
+		storSize = string(JivaStorSizeDef)
+	} else {
+		// Extract the runtime values
+		storSize = profileMap[string(PVPStorageSizeLbl)]
+	}
+
+	// If runtime was set with blank
 	if storSize == "" {
 		storSize = string(JivaStorSizeDef)
 	}
 
 	repArgs := make([]string, len(JivaReplicaArgs))
 
-	for _, rArg := range JivaReplicaArgs {
+	for i, rArg := range JivaReplicaArgs {
 		rArg = strings.Replace(rArg, string(JivaCtrlIPHolder), ctrlIP, 1)
 		rArg = strings.Replace(rArg, string(JivaStorageSizeHolder), storSize, 1)
-		repArgs = append(repArgs, rArg)
+		repArgs[i] = rArg
 	}
 
 	return repArgs

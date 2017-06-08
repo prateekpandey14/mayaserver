@@ -102,6 +102,4 @@ image:
 	@cd buildscripts/docker && sudo docker build -t openebs/m-apiserver:ci .
 	@sh buildscripts/push
 
-
-
 .PHONY: all bin cov install test vet format cover bootstrap release clean deps init dev sync image
