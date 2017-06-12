@@ -40,8 +40,7 @@ kubectl describe pod/maya-apiserver
 
 ##### Create yaml specs for role associated with VSM operations
 
-```
-$ cat vsm-role-all.yaml
+```yaml
 # This role allows operations on K8s pods, deployments in "default" namespace
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -54,8 +53,7 @@ rules:
   verbs: ["get","list","watch","create","update","patch","delete"]
 ```
 
-```
-$ cat vsm-service.yaml
+```yaml
 # This role binding binds vsm-role-all role to default service account
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -72,8 +70,7 @@ subjects:
   name: system:serviceaccount:default:default
 ```
 
-```
-$ cat vsm-cluster-role.yaml
+```yaml
 # This cluster role allows operations on K8s services in "default" namespace
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1beta1
@@ -88,8 +85,7 @@ rules:
 
 ##### Create yaml specs for cluster role binding w.r.t VSM operations
 
-```
-$ cat vsm-cluster-service.yaml
+```yaml
 # This role binding allows "default" service account to bind to 
 # vsm-cluster-role in "default" namespace.
 kind: ClusterRoleBinding
@@ -109,8 +105,7 @@ roleRef:
 
 ##### Create yaml specs to launch VSM as K8s deployments & K8s service
 
-```bash
-$ cat my-jiva-vsm.yaml
+```yaml
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
@@ -121,7 +116,9 @@ metadata:
 curl -k -H "Content-Type: application/yaml" \
   -XPOST -d"$(cat my-jiva-vsm.yaml)" \
   http://10.44.0.1:5656/latest/vsm/
+```
 
+```json
 {
   "metadata": {
     "annotations": {
@@ -158,7 +155,10 @@ curl http://10.44.0.1:5656/latest/vsm/read/<vsm-name>
 
 # e.g.
 
-$ curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
+curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
+```
+
+```json
 {
   "metadata": {
     "annotations": {
@@ -197,7 +197,11 @@ kubernetes             10.96.0.1     <none>        443/TCP             3d
 my-jiva-vsm-ctrl-svc   10.96.17.42   <none>        3260/TCP,9501/TCP   1m
 ubuntu@kubemaster-01:~$ 
 
+```bash
 ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
+```
+
+```json
 {
     "apiVersion": "v1",
     "kind": "Service",
@@ -240,15 +244,18 @@ ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
 }
 ```
 
-```
+```bash
 ubuntu@kubemaster-01:~$ kubectl get deploy
 NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 my-jiva-vsm-ctrl   1         1         1            1           5m
 my-jiva-vsm-rep    2         2         2            2           5m
 ```
 
-```
+```bash
 ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
+```
+
+```json
 {
     "apiVersion": "extensions/v1beta1",
     "kind": "Deployment",
@@ -346,8 +353,11 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
 }
 ```
 
-```
+```bash
 ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
+```
+
+```json
 {
     "apiVersion": "extensions/v1beta1",
     "kind": "Deployment",
