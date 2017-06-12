@@ -1,4 +1,4 @@
-#### Maya API server and Kubernetes
+### Maya API server and Kubernetes
 
 Maya API server is launched as a deploy/pod unit in Kubernetes. This service is 
 the interface for the storage clients to operate on OpenEBS storage. Typically, 
@@ -8,9 +8,9 @@ service.
 > OpenEBS has the concept of VSM (Volume Storage Machine) to provide persistent
 storage. Maya API service provides operations w.r.t VSM as a unit.
 
-##### Launch Maya API server as a K8s Pod
+#### Launch Maya API server as a K8s Pod
 
-- `Create the yaml specs for launching Maya API server as a K8s Pod`
+##### Create the yaml specs for launching Maya API server as a K8s Pod
 
 ```yaml
 apiVersion: v1
@@ -26,19 +26,19 @@ spec:
     - containerPort: 5656
 ```
 
-- `Use kubectl to launch Maya API server as a K8s Pod`
+##### Use kubectl to launch Maya API server as a K8s Pod
 
 ```bash
 kubectl create -f maya-api-server.yaml
 ```
 
-- `Get the IP address of above created Pod`
+- Get the IP address of above created Pod
 
 ```bash
 kubectl describe pod/maya-apiserver
 ```
 
-- `Create yaml specs for role associated with VSM operations`
+##### Create yaml specs for role associated with VSM operations
 
 ```
 $ cat vsm-role-all.yaml
@@ -86,7 +86,7 @@ rules:
   verbs: ["*"]
 ```
 
-- `Create yaml specs for cluster role binding w.r.t VSM operations`
+##### Create yaml specs for cluster role binding w.r.t VSM operations
 
 ```
 $ cat vsm-cluster-service.yaml
@@ -107,7 +107,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-- `Create yaml specs to launch VSM as K8s deployments & K8s service`
+##### Create yaml specs to launch VSM as K8s deployments & K8s service
 
 ```bash
 $ cat my-jiva-vsm.yaml
@@ -151,7 +151,7 @@ curl -k -H "Content-Type: application/yaml" \
 }
 ```
 
-- `Read an existing VSM`
+##### Read an existing VSM
 
 ```bash
 curl http://10.44.0.1:5656/latest/vsm/read/<vsm-name>
@@ -188,7 +188,7 @@ $ curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
 }
 ```
 
-- `Verify the launched Deployments & Services`
+##### Verify the launched Deployments & Services
 
 ```bash
 ubuntu@kubemaster-01:~$ kubectl get service
