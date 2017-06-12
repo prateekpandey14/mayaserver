@@ -96,7 +96,7 @@ type Informer interface {
 type Reader interface {
 	// Read fetches the volume details from the persistent volume
 	// provisioner.
-	Read(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
+	Read(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 }
 
 // TODO
@@ -113,7 +113,7 @@ type Provisioner interface {
 // volume provisioner.
 type Adder interface {
 	// Add creates a new persistent volume
-	Add(*v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error)
+	Add(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 }
 
 // Deleter interface abstracts deletion of volume of a persistent volume

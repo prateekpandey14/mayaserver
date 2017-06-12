@@ -107,18 +107,31 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-- `Read an existing VSM`
+- `Create yaml specs to launch VSM as K8s deployments & K8s service`
 
 ```bash
-curl http://10.44.0.1:5656/latest/vsm/read/<vsm-name>
+$ cat my-jiva-vsm.yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: my-jiva-vsm
+```
 
-# e.g.
+```bash
+curl -k -H "Content-Type: application/yaml" \
+  -XPOST -d"$(cat my-jiva-vsm.yaml)" \
+  http://10.44.0.1:5656/latest/vsm/
 
-$ curl http://10.44.0.1:5656/latest/vsm/read/abc
 {
   "metadata": {
+    "annotations": {
+      "be.jiva.volume.openebs.io\/count": "2",
+      "be.jiva.volume.openebs.io\/vol-size": "1G",
+      "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
+      "targetportal": "10.96.17.42:3260"
+    },
     "creationTimestamp": null,
-    "name": "abc"
+    "name": "my-jiva-vsm"
   },
   "spec": {
     "AccessModes": null,
@@ -138,28 +151,21 @@ $ curl http://10.44.0.1:5656/latest/vsm/read/abc
 }
 ```
 
-- `Create yaml specs to launch VSM as K8s deployments & K8s service`
+- `Read an existing VSM`
 
 ```bash
-$ cat my-jiva-vsm.yaml
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: my-jiva-vsm
-```
+curl http://10.44.0.1:5656/latest/vsm/read/<vsm-name>
 
-```bash
-curl -k -H "Content-Type: application/yaml" \
-  -XPOST -d"$(cat my-jiva-vsm.yaml)" \
-  http://10.44.0.1:5656/latest/vsm/
+# e.g.
 
+$ curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
 {
   "metadata": {
     "annotations": {
-      "be.jiva.volume.openebs.io\/count": "\u0000",
       "be.jiva.volume.openebs.io\/vol-size": "1G",
       "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
-      "targetportal": "10.96.137.5:3260"
+      "targetportal": "10.96.17.42:3260",
+      "be.jiva.volume.openebs.io\/count": "2"
     },
     "creationTimestamp": null,
     "name": "my-jiva-vsm"
@@ -185,28 +191,29 @@ curl -k -H "Content-Type: application/yaml" \
 - `Verify the launched Deployments & Services`
 
 ```bash
-ubuntu@kubemaster-01:~$ kubectl get services
+ubuntu@kubemaster-01:~$ kubectl get service
 NAME                   CLUSTER-IP    EXTERNAL-IP   PORT(S)             AGE
-kubernetes             10.96.0.1     <none>        443/TCP             2d
-my-jiva-vsm-ctrl-svc   10.96.137.5   <none>        3260/TCP,9501/TCP   1m
+kubernetes             10.96.0.1     <none>        443/TCP             3d
+my-jiva-vsm-ctrl-svc   10.96.17.42   <none>        3260/TCP,9501/TCP   1m
+ubuntu@kubemaster-01:~$ 
 
 ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
 {
     "apiVersion": "v1",
     "kind": "Service",
     "metadata": {
-        "creationTimestamp": "2017-06-12T06:16:17Z",
+        "creationTimestamp": "2017-06-12T08:54:04Z",
         "labels": {
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-ctrl-svc",
         "namespace": "default",
-        "resourceVersion": "25757",
+        "resourceVersion": "37744",
         "selfLink": "/api/v1/namespaces/default/services/my-jiva-vsm-ctrl-svc",
-        "uid": "a5244902-4f36-11e7-bdb8-021c6f7dbe9d"
+        "uid": "b00293e7-4f4c-11e7-bdb8-021c6f7dbe9d"
     },
     "spec": {
-        "clusterIP": "10.96.137.5",
+        "clusterIP": "10.96.17.42",
         "ports": [
             {
                 "name": "iscsi",
@@ -238,8 +245,9 @@ ubuntu@kubemaster-01:~$ kubectl get deploy
 NAME               DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
 my-jiva-vsm-ctrl   1         1         1            1           5m
 my-jiva-vsm-rep    2         2         2            2           5m
+```
 
-
+```
 ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
 {
     "apiVersion": "extensions/v1beta1",
@@ -248,16 +256,16 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
         "annotations": {
             "deployment.kubernetes.io/revision": "1"
         },
-        "creationTimestamp": "2017-06-12T06:16:17Z",
+        "creationTimestamp": "2017-06-12T08:54:04Z",
         "generation": 1,
         "labels": {
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-ctrl",
         "namespace": "default",
-        "resourceVersion": "25973",
+        "resourceVersion": "37787",
         "selfLink": "/apis/extensions/v1beta1/namespaces/default/deployments/my-jiva-vsm-ctrl",
-        "uid": "a51d601b-4f36-11e7-bdb8-021c6f7dbe9d"
+        "uid": "aff7baef-4f4c-11e7-bdb8-021c6f7dbe9d"
     },
     "spec": {
         "replicas": 1,
@@ -322,8 +330,8 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
         "availableReplicas": 1,
         "conditions": [
             {
-                "lastTransitionTime": "2017-06-12T06:16:17Z",
-                "lastUpdateTime": "2017-06-12T06:16:17Z",
+                "lastTransitionTime": "2017-06-12T08:54:04Z",
+                "lastUpdateTime": "2017-06-12T08:54:04Z",
                 "message": "Deployment has minimum availability.",
                 "reason": "MinimumReplicasAvailable",
                 "status": "True",
@@ -336,8 +344,9 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
         "updatedReplicas": 1
     }
 }
+```
 
-
+```
 ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
 {
     "apiVersion": "extensions/v1beta1",
@@ -346,16 +355,16 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
         "annotations": {
             "deployment.kubernetes.io/revision": "1"
         },
-        "creationTimestamp": "2017-06-12T06:16:17Z",
+        "creationTimestamp": "2017-06-12T08:54:04Z",
         "generation": 1,
         "labels": {
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-rep",
         "namespace": "default",
-        "resourceVersion": "25986",
+        "resourceVersion": "37818",
         "selfLink": "/apis/extensions/v1beta1/namespaces/default/deployments/my-jiva-vsm-rep",
-        "uid": "a532f21d-4f36-11e7-bdb8-021c6f7dbe9d"
+        "uid": "b00ef31b-4f4c-11e7-bdb8-021c6f7dbe9d"
     },
     "spec": {
         "replicas": 2,
@@ -384,7 +393,7 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
                         "args": [
                             "replica",
                             "--frontendIP",
-                            "10.96.137.5",
+                            "10.96.17.42",
                             "--size",
                             "1G",
                             "/openebs"
@@ -440,8 +449,8 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
         "availableReplicas": 2,
         "conditions": [
             {
-                "lastTransitionTime": "2017-06-12T06:18:38Z",
-                "lastUpdateTime": "2017-06-12T06:18:38Z",
+                "lastTransitionTime": "2017-06-12T08:54:20Z",
+                "lastUpdateTime": "2017-06-12T08:54:20Z",
                 "message": "Deployment has minimum availability.",
                 "reason": "MinimumReplicasAvailable",
                 "status": "True",
@@ -454,6 +463,4 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
         "updatedReplicas": 2
     }
 }
-
 ```
-

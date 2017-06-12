@@ -292,7 +292,7 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 //
 // NOTE:
 //    This is a concrete implementation of volume.Informer interface
-func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
+func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// TODO
 	// Validations of input i.e. claim
 
@@ -316,7 +316,7 @@ func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList
 //
 // NOTE:
 //    This is a concrete implementation of volume.Adder interface
-func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolumeList, error) {
+func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// TODO
 	// Validations of input i.e. claim
 

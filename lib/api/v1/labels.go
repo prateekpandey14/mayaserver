@@ -264,6 +264,9 @@ const (
 	// NOTE:
 	//    This is replaced at runtime
 	JivaStorageSizeHolder JivaAnnotations = "__STOR_SIZE__"
+
+	//
+	JivaVolumeNameHolder JivaAnnotations = "__VOLUME_NAME__"
 )
 
 // JivaDefaults is a typed label to provide default values to Jiva based
@@ -323,7 +326,8 @@ var (
 	JivaCtrlCmd = []string{"launch"}
 
 	// JivaCtrlArgs is the set of arguments provided to JivaCtrlCmd
-	JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameDef)}
+	//JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameDef)}
+	JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameHolder)}
 
 	// JivaReplicaCmd is the command used to start jiva replica
 	JivaReplicaCmd = []string{"launch"}

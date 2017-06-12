@@ -8,6 +8,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
+	k8sApisExtnsBeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
+
 	"k8s.io/client-go/rest"
 )
 
@@ -243,4 +246,38 @@ func (k *k8sUtil) inClusterCS() (*kubernetes.Clientset, error) {
 // of invoking outside the cluster K8s APIs.
 func (k *k8sUtil) outClusterCS() (*kubernetes.Clientset, error) {
 	return nil, fmt.Errorf("outClusterCS not supported in '%s'", k.Name())
+}
+
+func SetCtrlDeployConditions(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
+
+func SetReplDeployConditions(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
+
+func SetReplIPs(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
+
+func SetReplCount(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	annotations["be.jiva.volume.openebs.io/count"] = fmt.Sprint(*deploy.Spec.Replicas)
+}
+
+func SetReplVolumeSize(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	// TODO
+	// Set the size as labels in replica deployment & extract from the label
+	// Current way of extraction is a very crude way !!
+	con := deploy.Spec.Template.Spec.Containers[0]
+	size := con.Args[len(con.Args)-2]
+
+	annotations["be.jiva.volume.openebs.io/vol-size"] = size
+}
+
+func SetIQN(vsm string, deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	annotations["iqn"] = "iqn.2016-09.com.openebs.jiva:" + vsm
+}
+
+func SetServiceIP(svc *k8sApiV1.Service, annotations map[string]string) {
+	annotations["fe.jiva.volume.openebs.io/ip"] = svc.Spec.ClusterIP
+}
+
+func SetServiceStatus(svc *k8sApiV1.Service, annotations map[string]string) {}
+
+func SetISCSITargetPortal(svc *k8sApiV1.Service, annotations map[string]string) {
+	annotations["targetportal"] = svc.Spec.ClusterIP + ":3260"
 }

@@ -3,7 +3,7 @@ package k8s
 import (
 	"errors"
 	"fmt"
-	"reflect"
+	//"reflect"
 	"testing"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
@@ -1446,73 +1446,6 @@ func (m *okCreateServiceSvcOps) Create(svc *k8sApiv1.Service) (*k8sApiv1.Service
 	return svc, nil
 }
 
-// TestCreateControllerDeploymentReturnsOk returns a valid pod while invoking
-// createControllerDeployment().
-func TestCreateControllerDeploymentReturnsOk(t *testing.T) {
-	mockedO := &okCreateDeploymentK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &okCreateDeploymentK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	cp, err := mockedO.createControllerDeployment(volProfile)
-
-	if err != nil {
-		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
-	}
-
-	// Verify the deployment kind
-	if cp.Kind != string(v1.K8sKindDeployment) {
-		t.Errorf("TestCase: Kind Match \n\tExpectedKind: '%s' \n\tActualKind: '%s'", v1.K8sKindDeployment, cp.Kind)
-	}
-
-	// Verify the deployment version
-	if cp.APIVersion != string(v1.K8sDeploymentVersion) {
-		t.Errorf("TestCase: Pod Version Match \n\tExpectedAPIVersion: '%s' \n\tActualAPIVersion: '%s'", v1.K8sPodVersion, cp.APIVersion)
-	}
-
-	// Verify the deployment name
-	vsm, _ := volProfile.VSMName()
-	eDeployName := vsm + string(v1.ControllerSuffix)
-	if cp.Name != eDeployName {
-		t.Errorf("TestCase: Deployment Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", eDeployName, cp.Name)
-	}
-
-	// Verify the deployment labels
-	eLblStr := string(v1.VSMSelectorPrefix) + vsm
-	eLbl, _ := labels.Parse(eLblStr)
-	if !eLbl.Matches(labels.Set(cp.Labels)) {
-		t.Errorf("TestCase: Labels Match \n\tExpectedLabels: '%s' \n\tActualLabels: '%s'", eLbl, labels.Set(cp.Labels))
-	}
-
-	// Verify no. of containers within the pod
-	if len(cp.Spec.Template.Spec.Containers) != 1 {
-		t.Errorf("TestCase: No. of Containers \n\tExpectedContainers: '1' \n\tActualContainers: '%d'", len(cp.Spec.Template.Spec.Containers))
-	}
-
-	// Verify no. of ports within the container
-	if len(cp.Spec.Template.Spec.Containers[0].Ports) != 2 {
-		t.Errorf("TestCase: No. of Ports \n\tExpectedPorts: '2' \n\tActualPorts: '%d'", len(cp.Spec.Template.Spec.Containers[0].Ports))
-	}
-
-	// Verify container name
-	if cp.Spec.Template.Spec.Containers[0].Name != vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix) {
-		t.Errorf("TestCase: Container Name \n\tExpectedName: '%s' \n\tActualName: '%s'", vsm+string(v1.ControllerSuffix)+string(v1.ContainerSuffix), cp.Spec.Template.Spec.Containers[0].Name)
-	}
-
-	// Verify controller launch command
-	if !reflect.DeepEqual(cp.Spec.Template.Spec.Containers[0].Command, v1.JivaCtrlCmd) {
-		t.Errorf("TestCase: Controller Launch Cmd \n\tExpectedCmd: '%s' \n\tActualCmd: '%s'", v1.JivaCtrlCmd, cp.Spec.Template.Spec.Containers[0].Command)
-	}
-
-	// Verify controller launch arguments
-	if !reflect.DeepEqual(cp.Spec.Template.Spec.Containers[0].Args, v1.JivaCtrlArgs) {
-		t.Errorf("TestCase: Controller Launch Args \n\tExpectedArgs: '%s' \n\tActualArgs: '%s'", v1.JivaCtrlArgs, cp.Spec.Template.Spec.Containers[0].Args)
-	}
-}
-
 // TestReadStorageReturnsErrVsmName verifies the vsm name error
 func TestReadStorageReturnsErrVsmName(t *testing.T) {
 	mockedO := &mockK8sOrch{
@@ -1526,175 +1459,6 @@ func TestReadStorageReturnsErrVsmName(t *testing.T) {
 
 	if err != nil && err.Error() != "err-vsm-name" {
 		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: 'err-vsm-name' \n\tActualErr: '%s'", err.Error())
-	}
-}
-
-// TestReadStorageReturnsNoK8sClientSupport verifies no K8sClient support error
-// error
-func TestReadStorageReturnsNoK8sClientSupport(t *testing.T) {
-	mockedO := &noK8sClientSupportK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &noK8sClientSupportK8sOrch{},
-		},
-	}
-
-	volProfile := &okVsmNameVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := fmt.Sprintf("K8s client not supported by '%s'", "no-k8s-client-support-k8s-util")
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsErrNS verifies the namespace error
-func TestReadStorageReturnsErrNS(t *testing.T) {
-	mockedO := &errNSK8sClientK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errNSK8sClientK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := "err-ns"
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsErrPodOps verifies the pod operator error
-func TestReadStorageReturnsErrPodOps(t *testing.T) {
-	mockedO := &errDeploymentOpsK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errDeploymentOpsK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := "err-deployment-ops"
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsErrDeploymentList verifies the error during listing of pod
-//func TestReadStorageReturnsErrPodList(t *testing.T) {
-func TestReadStorageReturnsErrDeploymentList(t *testing.T) {
-	mockedO := &errDeploymentListK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &errDeploymentListK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := "err-deployment-list"
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsErrNilDeploymentList verifies the nil returned during
-// listing of deployments
-//func TestReadStorageReturnsErrPodListNil(t *testing.T) {
-func TestReadStorageReturnsErrNilDeploymentList(t *testing.T) {
-	mockedO := &errNilDeploymentListK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			label:     v1.NameLabel("err-nil-deployment-list-k8s-orch-lbl"),
-			name:      v1.OrchProviderRegistry("err-nil-deployment-list-k8s-orch-name"),
-			k8sUtlGtr: &errNilDeploymentListK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := fmt.Sprintf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", "ok-ns", "ok-vsm-name", mockedO.Label(), mockedO.Name())
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsErrDeploymentMatch verifies the error due to mismatch
-// of deployments
-func TestReadStorageReturnsErrDeploymentMatch(t *testing.T) {
-	mockedO := &errMissDeploymentListK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			label:     v1.NameLabel("err-miss-deployment-list-k8s-orch-lbl"),
-			name:      v1.OrchProviderRegistry("err-miss-deployment-list-k8s-orch-name"),
-			k8sUtlGtr: &errMissDeploymentListK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	_, err := mockedO.ReadStorage(volProfile)
-	if err == nil {
-		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
-	}
-
-	expErr := fmt.Sprintf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", "ok-ns", "ok-vsm-name", mockedO.Label(), mockedO.Name())
-
-	if err != nil && err.Error() != expErr {
-		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())
-	}
-}
-
-// TestReadStorageReturnsOk returns without error
-func TestReadStorageReturnsOk(t *testing.T) {
-	mockedO := &okReadStorageK8sOrch{
-		k8sOrchestrator: k8sOrchestrator{
-			k8sUtlGtr: &okReadStorageK8sOrch{},
-		},
-	}
-
-	volProfile := &okCtrlImgVolumeProfile{}
-
-	pvl, err := mockedO.ReadStorage(volProfile)
-
-	if err != nil {
-		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
-	}
-
-	// Verify the pvl items
-	if len(pvl.Items) != 1 {
-		t.Errorf("TestCase: No of PVs \n\tExpectedNo: '1' \n\tActualNo: '%d'", len(pvl.Items))
-	}
-
-	// Verify the pv name
-	expectedVSM := "ok-vsm-name"
-	if pvl.Items[0].Name != expectedVSM {
-		t.Errorf("TestCase: VSM Name Match \n\tExpectedName: '%s' \n\tActualName: '%s'", expectedVSM, pvl.Items[0].Name)
 	}
 }
 
@@ -1819,7 +1583,7 @@ func TestGetControllerServiceReturnsErrVsmName(t *testing.T) {
 		k8sOrchestrator: k8sOrchestrator{},
 	}
 
-	_, _, err := mockedO.getControllerService(&errVsmNameVolumeProfile{})
+	_, _, err := mockedO.getControllerServiceDetails(&errVsmNameVolumeProfile{})
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1840,7 +1604,7 @@ func TestGetControllerServiceReturnsNoK8sClientSupport(t *testing.T) {
 
 	volProfile := &okVsmNameVolumeProfile{}
 
-	_, _, err := mockedO.getControllerService(volProfile)
+	_, _, err := mockedO.getControllerServiceDetails(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1863,7 +1627,7 @@ func TestGetControllerServiceReturnsErrSvcOps(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, _, err := mockedO.getControllerService(volProfile)
+	_, _, err := mockedO.getControllerServiceDetails(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1886,7 +1650,7 @@ func TestGetControllerServiceReturnsErrSvcGet(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, _, err := mockedO.getControllerService(volProfile)
+	_, _, err := mockedO.getControllerServiceDetails(volProfile)
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1908,7 +1672,7 @@ func TestGetControllerServiceReturnsOk(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	name, ip, err := mockedO.getControllerService(volProfile)
+	name, ip, err := mockedO.getControllerServiceDetails(volProfile)
 
 	if err != nil {
 		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())

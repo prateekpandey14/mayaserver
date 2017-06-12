@@ -455,6 +455,22 @@ func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []str
 	return repArgs
 }
 
+//
+func MakeOrDefJivaControllerArgs(vsm string) []string {
+	if strings.TrimSpace(vsm) == "" {
+		return nil
+	}
+
+	ctrlArgs := make([]string, len(JivaCtrlArgs))
+
+	for i, cArg := range JivaCtrlArgs {
+		cArg = strings.Replace(cArg, string(JivaVolumeNameHolder), vsm, 1)
+		ctrlArgs[i] = cArg
+	}
+
+	return ctrlArgs
+}
+
 // DefaultJivaMountPath provides the default mount path for jiva based persistent
 // volumes
 func DefaultJivaMountPath() string {

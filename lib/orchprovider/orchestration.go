@@ -111,7 +111,7 @@ type StorageOps interface {
 	// AddStorage will add persistent volume running as containers
 	// TODO
 	//    Use VSM as the return type than *v1.PersistentVolumeList
-	AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
+	AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
 
 	// DeleteStorage will remove the persistent volume
 	// TODO
@@ -121,5 +121,5 @@ type StorageOps interface {
 	// ReadStorage will fetch information about the persistent volume
 	// TODO
 	//    Use VSM as the return type than *v1.PersistentVolumeList
-	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
+	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
 }
