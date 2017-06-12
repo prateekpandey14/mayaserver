@@ -195,7 +195,7 @@ ubuntu@kubemaster-01:~$ kubectl get service
 NAME                   CLUSTER-IP    EXTERNAL-IP   PORT(S)             AGE
 kubernetes             10.96.0.1     <none>        443/TCP             3d
 my-jiva-vsm-ctrl-svc   10.96.17.42   <none>        3260/TCP,9501/TCP   1m
-ubuntu@kubemaster-01:~$ 
+```
 
 ```bash
 ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
