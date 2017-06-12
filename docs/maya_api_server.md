@@ -112,6 +112,18 @@ metadata:
   name: my-jiva-vsm
 ```
 
+- Alternatively, a sample specs with specific volume size & single replica
+
+```yaml
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: my-jiva-vsm
+  labels:
+    volumeprovisioner.mapi.openebs.io/storage-size: 2G
+    volumeprovisioner.mapi.openebs.io/replica-count: 1
+```
+
 ```bash
 curl -k -H "Content-Type: application/yaml" \
   -XPOST -d"$(cat my-jiva-vsm.yaml)" \
