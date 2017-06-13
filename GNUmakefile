@@ -97,8 +97,13 @@ bootstrap:
 install: bin/${CTLNAME}
 	install -o root -g root -m 0755 ./bin/${CTLNAME} /usr/local/bin/${CTLNAME}
 
-image:
+maya:
+	go get github.com/openebs/maya
+	ls ${GOPATH}/bin
+
+image: maya
 	@cp bin/m-apiserver buildscripts/docker/
+	@cp ${GOPATH}/bin/maya buildscripts/docker/
 	@cd buildscripts/docker && sudo docker build -t openebs/m-apiserver:ci .
 	@sh buildscripts/push
 

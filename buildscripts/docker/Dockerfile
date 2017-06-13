@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
     
 RUN mkdir -p /etc/mayaserver/orchprovider
 COPY nomad_global.INI.tmpl /etc/mayaserver/orchprovider/nomad_global.INI
-COPY m-apiserver /usr/local/bin
+COPY m-apiserver maya /usr/local/bin/
 
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/entrypoint.sh
