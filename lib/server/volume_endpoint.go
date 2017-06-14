@@ -54,45 +54,6 @@ func (s *HTTPServer) VolumeSpecificRequest(resp http.ResponseWriter, req *http.R
 	}
 }
 
-// VSMSpecificRequest is a http handler implementation. It deals with HTTP
-// requests w.r.t a single VSM.
-//
-// TODO
-//    Should it return specific types than interface{} ?
-func (s *HTTPServer) VSMSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-
-	switch req.Method {
-	case "PUT", "POST":
-		return s.vsmAdd(resp, req)
-	case "GET":
-		return s.vsmSpecificGetRequest(resp, req)
-	default:
-		return nil, CodedError(405, ErrInvalidMethod)
-	}
-}
-
-// vsmSpecificGetRequest deals with HTTP GET request w.r.t a single VSM
-func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-	// Extract info from path after trimming
-	path := strings.TrimPrefix(req.URL.Path, "/latest/vsms")
-
-	// Is req valid ?
-	if path == req.URL.Path {
-		return nil, CodedError(405, ErrInvalidMethod)
-	}
-
-	switch {
-
-	case strings.Contains(path, "/read/"):
-		vsmName := strings.TrimPrefix(path, "/read/")
-		return s.vsmRead(resp, req, vsmName)
-	case path == "/":
-		return s.vsmList(resp, req)
-	default:
-		return nil, CodedError(405, ErrInvalidMethod)
-	}
-}
-
 func (s *HTTPServer) volumeProvision(resp http.ResponseWriter, req *http.Request, volName string) (interface{}, error) {
 
 	pvc := v1.PersistentVolumeClaim{}
@@ -216,6 +177,45 @@ func (s *HTTPServer) volumeInfo(resp http.ResponseWriter, req *http.Request, vol
 	}
 
 	return info, nil
+}
+
+// VSMSpecificRequest is a http handler implementation. It deals with HTTP
+// requests w.r.t a single VSM.
+//
+// TODO
+//    Should it return specific types than interface{} ?
+func (s *HTTPServer) VSMSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+
+	switch req.Method {
+	case "PUT", "POST":
+		return s.vsmAdd(resp, req)
+	case "GET":
+		return s.vsmSpecificGetRequest(resp, req)
+	default:
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
+}
+
+// vsmSpecificGetRequest deals with HTTP GET request w.r.t a single VSM
+func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+	// Extract info from path after trimming
+	path := strings.TrimPrefix(req.URL.Path, "/latest/volumes")
+
+	// Is req valid ?
+	if path == req.URL.Path {
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
+
+	switch {
+
+	case strings.Contains(path, "/info/"):
+		vsmName := strings.TrimPrefix(path, "/info/")
+		return s.vsmRead(resp, req, vsmName)
+	case path == "/":
+		return s.vsmList(resp, req)
+	default:
+		return nil, CodedError(405, ErrInvalidMethod)
+	}
 }
 
 // vsmList is the http handler that lists VSMs

@@ -127,7 +127,7 @@ metadata:
 ```bash
 curl -k -H "Content-Type: application/yaml" \
   -XPOST -d"$(cat my-jiva-vsm.yaml)" \
-  http://10.44.0.1:5656/latest/vsms/
+  http://10.44.0.1:5656/latest/volumes/
 ```
 
 ```json
@@ -163,11 +163,11 @@ curl -k -H "Content-Type: application/yaml" \
 ##### Read an existing VSM
 
 ```bash
-curl http://10.44.0.1:5656/latest/vsms/read/<vsm-name>
+curl http://10.44.0.1:5656/latest/volumes/info/<vsm-name>
 
 # e.g.
 
-curl http://10.44.0.1:5656/latest/vsms/read/my-jiva-vsm
+curl http://10.44.0.1:5656/latest/volumes/info/my-jiva-vsm
 ```
 
 ```json
@@ -203,7 +203,7 @@ curl http://10.44.0.1:5656/latest/vsms/read/my-jiva-vsm
 ##### List all VSMs
 
 ```bash
-curl http://10.44.0.1:5656/latest/vsms/
+curl http://10.44.0.1:5656/latest/volumes/
 ```
 
 ```json

@@ -131,13 +131,14 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 
 	// Can be a GET, PUT, or POST.
 	// Handler has the intelligence to cater to various http methods.
-	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VolumesRequest))
+	//s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VolumesRequest))
 
 	// Request w.r.t to a single volume entity is handled here
-	s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
+	//s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
 
 	// Request w.r.t to a single VSM entity is handled here
-	s.mux.HandleFunc("/latest/vsms/", s.wrap(s.VSMSpecificRequest))
+	//s.mux.HandleFunc("/latest/vsms/", s.wrap(s.VSMSpecificRequest))
+	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VSMSpecificRequest))
 }
 
 // GetVolumePlugin is a pass through function that provides a particular
