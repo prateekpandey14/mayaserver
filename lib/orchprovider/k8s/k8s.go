@@ -164,14 +164,8 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 	// Move this entire logic to a separate package that will couple jiva
 	// provisioner with k8s orchestrator
 
-	// create k8s pod of persistent volume controller
-	_, err := k.createControllerDeployment(volProProfile)
-	if err != nil {
-		return nil, err
-	}
-
 	// create k8s service of persistent volume controller
-	_, err = k.createControllerService(volProProfile)
+	_, err := k.createControllerService(volProProfile)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -180,14 +174,19 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, err
 	}
 
-	// TODO
 	// Get the persistent volume controller service name & IP address
-	_, ctrlIP, err := k.getControllerServiceDetails(volProProfile)
+	_, clusterIP, err := k.getControllerServiceDetails(volProProfile)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
 		// Delegate to DeleteStorage which should handle stuff in a
 		// robust way
+		return nil, err
+	}
+
+	// create k8s pod of persistent volume controller
+	_, err = k.createControllerDeployment(volProProfile, clusterIP)
+	if err != nil {
 		return nil, err
 	}
 
@@ -197,7 +196,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, nil
 	}
 
-	_, err = k.createDeploymentReplicas(volProProfile, ctrlIP)
+	_, err = k.createDeploymentReplicas(volProProfile, clusterIP)
 	if err != nil {
 		// TODO
 		// Delete the persistent volume controller pod
@@ -325,11 +324,15 @@ func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, b
 
 // createControllerDeployment creates a persistent volume controller deployment in
 // kubernetes
-func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.Deployment, error) {
+func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.VolumeProvisionerProfile, clusterIP string) (*k8sApisExtnsBeta1.Deployment, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
 		return nil, err
+	}
+
+	if clusterIP == "" {
+		return nil, fmt.Errorf("VSM cluster IP is required to create controller for vsm 'name: %s'", vsm)
 	}
 
 	cImg, imgSupport, err := volProProfile.ControllerImage()
@@ -383,7 +386,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 							Name:    vsm + string(v1.ControllerSuffix) + string(v1.ContainerSuffix),
 							Image:   cImg,
 							Command: v1.JivaCtrlCmd,
-							Args:    v1.MakeOrDefJivaControllerArgs(vsm),
+							Args:    v1.MakeOrDefJivaControllerArgs(vsm, clusterIP),
 							Ports: []k8sApiV1.ContainerPort{
 								k8sApiV1.ContainerPort{
 									ContainerPort: v1.DefaultJivaISCSIPort(),
@@ -412,15 +415,15 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 
 // createDeploymentReplicas creates one or more persistent volume deployment
 // replica(s) in Kubernetes
-func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.VolumeProvisionerProfile, ctrlIP string) (*k8sApisExtnsBeta1.Deployment, error) {
+func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.VolumeProvisionerProfile, clusterIP string) (*k8sApisExtnsBeta1.Deployment, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
 		return nil, err
 	}
 
-	if ctrlIP == "" {
-		return nil, fmt.Errorf("VSM controller IP is required to create replica(s) for vsm 'name: %s'", vsm)
+	if clusterIP == "" {
+		return nil, fmt.Errorf("VSM cluster IP is required to create replica(s) for vsm 'name: %s'", vsm)
 	}
 
 	rImg, imgSupport, err := volProProfile.ReplicaImage()
@@ -501,7 +504,7 @@ func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.Volu
 							Name:    vsm + string(v1.ReplicaSuffix) + string(v1.ContainerSuffix),
 							Image:   rImg,
 							Command: v1.JivaReplicaCmd,
-							Args:    v1.MakeOrDefJivaReplicaArgs(pvc.Labels, ctrlIP),
+							Args:    v1.MakeOrDefJivaReplicaArgs(pvc.Labels, clusterIP),
 							Ports: []k8sApiV1.ContainerPort{
 								k8sApiV1.ContainerPort{
 									ContainerPort: v1.DefaultJivaReplicaPort1(),

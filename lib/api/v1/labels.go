@@ -269,7 +269,7 @@ const (
 	//
 	// NOTE:
 	//    This is replaced at runtime
-	JivaCtrlIPHolder JivaAnnotations = "__CTRL_IP__"
+	JivaClusterIPHolder JivaAnnotations = "__CLUSTER_IP__"
 
 	// JivaStorageSizeHolder is used as a placeholder for persistent volume's
 	// storage capacity
@@ -343,13 +343,13 @@ var (
 
 	// JivaCtrlArgs is the set of arguments provided to JivaCtrlCmd
 	//JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameDef)}
-	JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), string(JivaVolumeNameHolder)}
+	JivaCtrlArgs = []string{"controller", "--frontend", string(JivaControllerFrontendDef), "--clusterIP", string(JivaClusterIPHolder), string(JivaVolumeNameHolder)}
 
 	// JivaReplicaCmd is the command used to start jiva replica
 	JivaReplicaCmd = []string{"launch"}
 
 	// JivaReplicaArgs is the set of arguments provided to JivaReplicaCmd
-	JivaReplicaArgs = []string{"replica", "--frontendIP", string(JivaCtrlIPHolder), "--size", string(JivaStorageSizeHolder), string(JivaPersistentMountPathDef)}
+	JivaReplicaArgs = []string{"replica", "--frontendIP", string(JivaClusterIPHolder), "--size", string(JivaStorageSizeHolder), string(JivaPersistentMountPathDef)}
 )
 
 // TODO

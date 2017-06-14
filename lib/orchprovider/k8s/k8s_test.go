@@ -439,7 +439,7 @@ func TestCreateControllerDeploymentReturnsErrVsmName(t *testing.T) {
 		k8sOrchestrator: k8sOrchestrator{},
 	}
 
-	_, err := mockedO.createControllerDeployment(&errVsmNameVolumeProfile{})
+	_, err := mockedO.createControllerDeployment(&errVsmNameVolumeProfile{}, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -472,7 +472,7 @@ func TestCreateControllerDeploymentReturnsErrCtrlImg(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createControllerDeployment(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -617,7 +617,7 @@ func TestCreateControllerDeploymentReturnsNoSupportCtrlImg(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createControllerDeployment(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -669,7 +669,7 @@ func TestCreateControllerDeploymentReturnsNoK8sClientSupport(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, err := mockedO.createControllerDeployment(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1336,7 +1336,7 @@ func TestCreateControllerDeploymentReturnsErrDeploymentOps(t *testing.T) {
 
 	volProfile := &okCtrlImgVolumeProfile{}
 
-	_, err := mockedO.createControllerDeployment(volProfile)
+	_, err := mockedO.createControllerDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}

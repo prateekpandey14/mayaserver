@@ -426,8 +426,8 @@ func DefaultJivaPersistentPath(vsm string, position int) string {
 // NOTE:
 //    This utility function does not validate & just returns if not capable of
 // performing
-func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []string {
-	if strings.TrimSpace(ctrlIP) == "" {
+func MakeOrDefJivaReplicaArgs(profileMap map[string]string, clusterIP string) []string {
+	if strings.TrimSpace(clusterIP) == "" {
 		return nil
 	}
 
@@ -447,7 +447,7 @@ func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []str
 	repArgs := make([]string, len(JivaReplicaArgs))
 
 	for i, rArg := range JivaReplicaArgs {
-		rArg = strings.Replace(rArg, string(JivaCtrlIPHolder), ctrlIP, 1)
+		rArg = strings.Replace(rArg, string(JivaClusterIPHolder), clusterIP, 1)
 		rArg = strings.Replace(rArg, string(JivaStorageSizeHolder), storSize, 1)
 		repArgs[i] = rArg
 	}
@@ -456,8 +456,8 @@ func MakeOrDefJivaReplicaArgs(profileMap map[string]string, ctrlIP string) []str
 }
 
 //
-func MakeOrDefJivaControllerArgs(vsm string) []string {
-	if strings.TrimSpace(vsm) == "" {
+func MakeOrDefJivaControllerArgs(vsm string, clusterIP string) []string {
+	if strings.TrimSpace(vsm) == "" || strings.TrimSpace(clusterIP) == "" {
 		return nil
 	}
 
@@ -465,6 +465,7 @@ func MakeOrDefJivaControllerArgs(vsm string) []string {
 
 	for i, cArg := range JivaCtrlArgs {
 		cArg = strings.Replace(cArg, string(JivaVolumeNameHolder), vsm, 1)
+		cArg = strings.Replace(cArg, string(JivaClusterIPHolder), clusterIP, 1)
 		ctrlArgs[i] = cArg
 	}
 
