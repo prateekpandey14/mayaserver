@@ -17,13 +17,13 @@ const (
 // TODO
 // Deprecate
 // A type that acts on an infrastructure level i.e. orchestrator hosts
-type ContainerStorageLbl string
+//type ContainerStorageLbl string
 
 // TODO
 // Deprecate
 const (
-	CSPersistenceLocationLbl ContainerStorageLbl = "cs.openebs.io/persistence-location"
-	CSReplicaCountLbl        ContainerStorageLbl = "cs.openebs.io/replica-count"
+//CSPersistenceLocationLbl ContainerStorageLbl = "cs.openebs.io/persistence-location"
+//CSReplicaCountLbl        ContainerStorageLbl = "cs.openebs.io/replica-count"
 )
 
 // TODO
@@ -45,14 +45,14 @@ const (
 
 // TODO
 //    Need to standardize on the label's value.
-type RequestsLbl string
+//type RequestsLbl string
 
 const (
-	// Old way to labels
-	// TODO
-	// Deprecate
-	RegionLbl     RequestsLbl = "requests.openebs.io/region"
-	DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
+// Old way to labels
+// TODO
+// Deprecate
+//RegionLbl     RequestsLbl = "requests.openebs.io/region"
+//DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
 )
 
 // OrchProviderProfileLabel is a typed label to determine orchestration provider
@@ -97,8 +97,6 @@ type VolumeProvisionerProfileLabel string
 const (
 	// Label / Tag for a persistent volume provisioner profile's name
 	PVPProfileNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/profile-name"
-	// Label / Tag for a persistent volume provisioner's VSM name
-	//PVPVSMNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/vsm-name"
 	// Label / Tag for a persistent volume provisioner's persistence location
 	PVPPersistenceLocationLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistence-location"
 	// Label / Tag for a persistent volume provisioner's replica support
@@ -293,9 +291,12 @@ const (
 	// persistent volume controller
 	JivaControllerFrontendDef JivaDefaults = "gotgt"
 
+	// Jiva's iSCSI Qualified IQN value.
+	JivaIqnFormatPrefix JivaDefaults = "iqn.2016-09.com.openebs.jiva"
+
 	// JivaVolumeNameDef is used to provide default name for jiva
 	// based persistent volumes
-	JivaVolumeNameDef JivaDefaults = "jvol"
+	//JivaVolumeNameDef JivaDefaults = "jvol"
 
 	// JivaISCSIPortDef is used to provide default iscsi port value for jiva
 	// based persistent volumes

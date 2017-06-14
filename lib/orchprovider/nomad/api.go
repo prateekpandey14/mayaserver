@@ -84,12 +84,14 @@ type StorageApis interface {
 
 	// StorageProps fetches appropriate persistent storage props that
 	// is assumed to be supported at deployed Nomad environment.
-	StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error)
+	//StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error)
+	StorageProps(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error)
 }
 
 // Fetch persistent storage properties that is supported at the deployed Nomad
 // environment.
-func (n *nomadApi) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error) {
+//func (n *nomadApi) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error) {
+func (n *nomadApi) StorageProps(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error) {
 
 	nUtil := n.nUtil
 	if nUtil == nil {

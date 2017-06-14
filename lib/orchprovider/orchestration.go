@@ -100,7 +100,7 @@ type StoragePlacements interface {
 	// TODO
 	// This function will not be required once maya api server implements orchestrator
 	// provider specific profiles.
-	StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error)
+	StoragePropsReq(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error)
 }
 
 // StorageOps exposes various storage related operations that deals with

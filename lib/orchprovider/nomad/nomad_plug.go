@@ -199,7 +199,8 @@ func (n *NomadOrchestrator) NetworkPropsReq(dc string) (map[v1.ContainerNetworki
 // TODO
 // This implementation will not be required once maya api server implements
 // orchestrator provider specific profiles.
-func (n *NomadOrchestrator) StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error) {
+//func (n *NomadOrchestrator) StoragePropsReq(dc string) (map[v1.ContainerStorageLbl]string, error) {
+func (n *NomadOrchestrator) StoragePropsReq(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error) {
 
 	return n.nStorApis.StorageProps(dc)
 }

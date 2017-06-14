@@ -10,19 +10,19 @@ import (
 type JivaLbl string
 
 const (
-	JivaFrontEndImageLbl JivaLbl = "fe.jiva.volume.openebs.io/image-version"
-	JivaBackEndImageLbl  JivaLbl = "be.jiva.volume.openebs.io/image-version"
+	//JivaFrontEndImageLbl JivaLbl = "fe.jiva.volume.openebs.io/image-version"
+	//JivaBackEndImageLbl  JivaLbl = "be.jiva.volume.openebs.io/image-version"
 
 	JivaFrontEndIPLbl JivaLbl = "fe.jiva.volume.openebs.io/ip"
 	JivaBackEndIPLbl  JivaLbl = "be.jiva.volume.openebs.io/ip"
 
 	// TODO remove this & use the generic v1.labels
-	JivaFrontEndAllIPsLbl JivaLbl = "fe.jiva.volume.openebs.io/all-ips"
-	JivaBackEndAllIPsLbl  JivaLbl = "be.jiva.volume.openebs.io/all-ips"
+	//JivaFrontEndAllIPsLbl JivaLbl = "fe.jiva.volume.openebs.io/all-ips"
+	//JivaBackEndAllIPsLbl  JivaLbl = "be.jiva.volume.openebs.io/all-ips"
 
 	// TODO remove this & use the generic v1.labels
-	JivaFrontEndCountLbl JivaLbl = "fe.jiva.volume.openebs.io/count"
-	JivaBackEndCountLbl  JivaLbl = "be.jiva.volume.openebs.io/count"
+	//JivaFrontEndCountLbl JivaLbl = "fe.jiva.volume.openebs.io/count"
+	//JivaBackEndCountLbl  JivaLbl = "be.jiva.volume.openebs.io/count"
 
 	// TODO
 	// Will it be good to namespace these labels ?
@@ -68,7 +68,7 @@ const (
 	// NOTE:
 	//    This label-value / tag-value can be overridden by user specified value when
 	// provided with corresponding label / tag.
-	JivaIqnFormatPrefix string = "iqn.2016-09.com.openebs.jiva"
+	//JivaIqnFormatPrefix string = "iqn.2016-09.com.openebs.jiva"
 
 	// TODO
 	// Remove deprecated

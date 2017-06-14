@@ -21,7 +21,7 @@ func PvcToJobName(pvc *v1.PersistentVolumeClaim) (string, error) {
 	}
 
 	if pvc.Name == "" {
-		return "", fmt.Errorf("Missing name in pvc")
+		return "", fmt.Errorf("Missing VSM name in pvc")
 	}
 
 	return pvc.Name, nil
@@ -47,31 +47,34 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	}
 
 	if pvc.Name == "" {
-		return nil, fmt.Errorf("Name missing in pvc")
+		return nil, fmt.Errorf("Missing VSM name in pvc")
 	}
 
 	if pvc.Labels == nil {
-		return nil, fmt.Errorf("Labels missing in pvc")
+		return nil, fmt.Errorf("Missing labels in pvc")
 	}
 
-	if pvc.Labels[string(v1.RegionLbl)] == "" {
+	if pvc.Labels[string(v1.OrchRegionLbl)] == "" {
 		return nil, fmt.Errorf("Missing region in pvc")
 	}
 
-	if pvc.Labels[string(v1.DatacenterLbl)] == "" {
+	if pvc.Labels[string(v1.OrchDCLbl)] == "" {
 		return nil, fmt.Errorf("Missing datacenter in pvc")
 	}
 
-	if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva fe image version in pvc")
+	//if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
+	if pvc.Labels[string(v1.PVPControllerImageLbl)] == "" {
+		return nil, fmt.Errorf("Missing controller image in pvc")
 	}
 
-	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva fe ip in pvc")
+	//if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
+	if pvc.Labels[string(v1.PVPControllerIPsLbl)] == "" {
+		return nil, fmt.Errorf("Missing controller IP(s) in pvc")
 	}
 
-	if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
-		return nil, fmt.Errorf("Missing jiva be ips in pvc")
+	//if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
+	if pvc.Labels[string(v1.PVPReplicaIPsLbl)] == "" {
+		return nil, fmt.Errorf("Missing replica IPs in pvc")
 	}
 
 	// TODO These should be derived from:
@@ -81,51 +84,35 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	// These types are currently strict but less flexible
 
 	if pvc.Labels[string(v1.CNTypeLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn type in pvc")
+		return nil, fmt.Errorf("Missing CN type in pvc")
 	}
 
 	if pvc.Labels[string(v1.CNSubnetLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn subnet in pvc")
+		return nil, fmt.Errorf("Missing CN subnet in pvc")
 	}
 
 	if pvc.Labels[string(v1.CNInterfaceLbl)] == "" {
-		return nil, fmt.Errorf("Missing cn interface in pvc")
+		return nil, fmt.Errorf("Missing CN interface in pvc")
 	}
 
-	if pvc.Labels[string(v1.CSPersistenceLocationLbl)] == "" {
-		return nil, fmt.Errorf("Missing cs persistence location in pvc")
+	//if pvc.Labels[string(v1.CSPersistenceLocationLbl)] == "" {
+	if pvc.Labels[string(v1.PVPPersistenceLocationLbl)] == "" {
+		return nil, fmt.Errorf("Missing persistent location in pvc")
 	}
 
-	// TODO
-	// With the proposed design the pvc validations should not occur here
-	// They should be retricted to appropriate volume plugins.
-	if &pvc.Spec == nil || &pvc.Spec.Resources == nil || pvc.Spec.Resources.Requests == nil {
-		return nil, fmt.Errorf("Storage specs missing in pvc")
+	if pvc.Labels[string(v1.PVPStorageSizeLbl)] == "" {
+		return nil, fmt.Errorf("Missing storage size in pvc")
 	}
 
-	feQuantity := pvc.Spec.Resources.Requests[v1jiva.JivaFrontEndVolSizeLbl]
-	feQuantityPtr := &feQuantity
-
-	if feQuantityPtr != nil && feQuantityPtr.Sign() <= 0 {
-		return nil, fmt.Errorf("Invalid jiva fe storage size in pvc")
-	}
-
-	beQuantity := pvc.Spec.Resources.Requests[v1jiva.JivaBackEndVolSizeLbl]
-	beQuantityPtr := &beQuantity
-
-	if beQuantityPtr != nil && beQuantityPtr.Sign() <= 0 {
-		return nil, fmt.Errorf("Invalid jiva be storage size in pvc")
-	}
-
-	jivaFEVolSize := feQuantityPtr.String()
-	jivaBEVolSize := beQuantityPtr.String()
+	jivaFEVolSize := pvc.Labels[string(v1.PVPStorageSizeLbl)]
+	jivaBEVolSize := pvc.Labels[string(v1.PVPStorageSizeLbl)]
 
 	// TODO
 	// ID is same as Name currently
 	// Do we need to think on it ?
 	jobName := helper.StringToPtr(pvc.Name)
-	region := helper.StringToPtr(pvc.Labels[string(v1.RegionLbl)])
-	dc := pvc.Labels[string(v1.DatacenterLbl)]
+	region := helper.StringToPtr(pvc.Labels[string(v1.OrchRegionLbl)])
+	dc := pvc.Labels[string(v1.OrchDCLbl)]
 
 	jivaGroupName := "jiva-pod"
 	jivaVolName := pvc.Name
@@ -138,18 +125,18 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	feTaskName := "fe"
 	beTaskName := "be"
 
-	jivaFeVersion := pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)]
+	jivaFeVersion := pvc.Labels[string(v1.PVPControllerImageLbl)]
 	jivaNetworkType := pvc.Labels[string(v1.CNTypeLbl)]
-	jivaFeIP := pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)]
+	jivaFeIP := pvc.Labels[string(v1.PVPControllerIPsLbl)]
 
-	jivaBEPersistentStor := pvc.Labels[string(v1.CSPersistenceLocationLbl)]
-	jivaBECount := pvc.Labels[string(v1.CSReplicaCountLbl)]
+	jivaBEPersistentStor := pvc.Labels[string(v1.PVPPersistenceLocationLbl)]
+	jivaBECount := pvc.Labels[string(v1.PVPReplicaCountLbl)]
 	iJivaBECount, err := strconv.Atoi(jivaBECount)
 	if err != nil {
 		return nil, err
 	}
 
-	jivaBeIPs := pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)]
+	jivaBeIPs := pvc.Labels[string(v1.PVPReplicaIPsLbl)]
 	jivaBeIPArr := strings.Split(jivaBeIPs, ",")
 	jivaFeSubnet := pvc.Labels[string(v1.CNSubnetLbl)]
 	jivaFeInterface := pvc.Labels[string(v1.CNInterfaceLbl)]
@@ -164,8 +151,8 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	jobMeta := map[string]string{
 		string(v1jiva.JivaBackEndVolSizeLbl): jivaBEVolSize,
 		string(v1jiva.JivaFrontEndIPLbl):     jivaFeIP,
-		string(v1jiva.JivaTargetPortalLbl):   jivaFeIP + ":" + v1jiva.JivaIscsiTargetPortalPort,
-		string(v1jiva.JivaIqnLbl):            v1jiva.JivaIqnFormatPrefix + ":" + jivaVolName,
+		string(v1jiva.JivaTargetPortalLbl):   jivaFeIP + ":" + string(v1.JivaISCSIPortDef),
+		string(v1jiva.JivaIqnLbl):            string(v1.JivaIqnFormatPrefix) + ":" + jivaVolName,
 	}
 
 	// Jiva FE's ENV among other things interpolates Nomad's built-in properties
@@ -329,7 +316,7 @@ func setBEIPs(beEnv, jobMeta map[string]string, jivaBeIPArr []string, iJivaBECou
 		return fmt.Errorf("Replica IP count '%d' does not match replica count '%d'", len(jivaBeIPArr), iJivaBECount)
 	}
 
-	jobMeta[string(v1jiva.JivaBackEndCountLbl)] = strconv.Itoa(iJivaBECount)
+	jobMeta[string(v1.PVPReplicaCountLbl)] = strconv.Itoa(iJivaBECount)
 
 	var k, v string
 

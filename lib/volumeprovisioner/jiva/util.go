@@ -96,7 +96,7 @@ type StorageOps interface {
 	//    jiva requires these persistent storage properties to provision
 	// its instances e.g. backing persistence location is required on which
 	// a jiva replica can operate.
-	StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error)
+	StorageProps(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error)
 }
 
 // jivaUtil is the concrete implementation for
@@ -196,7 +196,7 @@ func (j *jivaUtil) NetworkProps(dc string) (map[v1.ContainerNetworkingLbl]string
 //
 // NOTE:
 //  This is a concrete implementation of StorageOps interface
-func (j *jivaUtil) StorageProps(dc string) (map[v1.ContainerStorageLbl]string, error) {
+func (j *jivaUtil) StorageProps(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error) {
 
 	orchestrator, err := j.aspect.GetOrchProvider()
 	if err != nil {
@@ -434,10 +434,10 @@ func setJivaLblProps(pvc *v1.PersistentVolumeClaim) error {
 		return fmt.Errorf("Labels missing in pvc")
 	}
 
-	if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
+	if pvc.Labels[string(v1.PVPControllerImageLbl)] == "" {
 		// TODO
 		// Move to constants
-		pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] = "openebs/jiva:latest"
+		pvc.Labels[string(v1.PVPControllerImageLbl)] = "openebs/jiva:latest"
 	}
 
 	return nil
@@ -514,7 +514,7 @@ func (j *jivaUtil) setRegion(pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	// return if region is already set
-	if pvc.Labels[string(v1.RegionLbl)] != "" {
+	if pvc.Labels[string(v1.OrchRegionLbl)] != "" {
 		return nil
 	}
 
@@ -538,7 +538,7 @@ func (j *jivaUtil) setRegion(pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	// set dc in pvc
-	pvc.Labels[string(v1.RegionLbl)] = region
+	pvc.Labels[string(v1.OrchRegionLbl)] = region
 
 	return nil
 }
@@ -555,8 +555,8 @@ func (j *jivaUtil) setDC(pvc *v1.PersistentVolumeClaim) (string, error) {
 	}
 
 	// return if dc is already set
-	if pvc.Labels[string(v1.DatacenterLbl)] != "" {
-		return pvc.Labels[string(v1.DatacenterLbl)], nil
+	if pvc.Labels[string(v1.OrchDCLbl)] != "" {
+		return pvc.Labels[string(v1.OrchDCLbl)], nil
 	}
 
 	// Set the pvc with dc from jiva's aspect
@@ -570,7 +570,7 @@ func (j *jivaUtil) setDC(pvc *v1.PersistentVolumeClaim) (string, error) {
 	}
 
 	// set dc in pvc
-	pvc.Labels[string(v1.DatacenterLbl)] = dc
+	pvc.Labels[string(v1.OrchDCLbl)] = dc
 
 	return dc, nil
 }
@@ -661,7 +661,7 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	// Below makes sense of only one jiva controller & one or more replicas.
 
 	// Set the frontend IP & backend IPs
-	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" && pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
+	if pvc.Labels[string(v1.PVPControllerIPsLbl)] == "" && pvc.Labels[string(v1.PVPReplicaIPsLbl)] == "" {
 
 		iBECount, err := getBackendCount(pvc)
 		if err != nil {
@@ -676,7 +676,7 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 		}
 
 		// This sets the frontend IP
-		pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] = ips[0]
+		pvc.Labels[string(v1.PVPControllerIPsLbl)] = ips[0]
 
 		// Now set the backend IPs, after removing the 0th element which is already
 		// used as frontend IP
@@ -689,20 +689,20 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	// Set the frontend IP only
-	if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
+	if pvc.Labels[string(v1.PVPControllerIPsLbl)] == "" {
 		// Get one available IP for frontend
 		ips, err := nethelper.GetAvailableIPs(networkCIDR, 1)
 		if err != nil {
 			return err
 		}
 
-		pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] = ips[0]
+		pvc.Labels[string(v1.PVPControllerIPsLbl)] = ips[0]
 
 		return nil
 	}
 
 	// Set the backend IPs only
-	if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
+	if pvc.Labels[string(v1.PVPReplicaIPsLbl)] == "" {
 
 		// Set the backend IPs
 		err = setBackendIPs(networkCIDR, pvc)
@@ -724,7 +724,7 @@ func (j *jivaUtil) setCN(dc string, pvc *v1.PersistentVolumeClaim) error {
 func getBackendCount(pvc *v1.PersistentVolumeClaim) (int, error) {
 
 	// Get the backend IP count
-	beCount := pvc.Labels[string(v1.CSReplicaCountLbl)]
+	beCount := pvc.Labels[string(v1.PVPReplicaCountLbl)]
 
 	iBECount, err := strconv.Atoi(beCount)
 	if err != nil {
@@ -779,7 +779,7 @@ func setBackendIPsAsString(ips []string, pvc *v1.PersistentVolumeClaim) error {
 	}
 
 	// Remove the trailing comma
-	pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] = strings.TrimSuffix(strBEIPs, ",")
+	pvc.Labels[string(v1.PVPReplicaIPsLbl)] = strings.TrimSuffix(strBEIPs, ",")
 
 	return nil
 

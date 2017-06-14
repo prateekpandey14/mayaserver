@@ -139,7 +139,7 @@ type NomadNetworks interface {
 type NomadStorages interface {
 	// CS exposes various persistence storage options that is supported at a
 	// particular datacenter where Nomad is running
-	CS(dc string) (map[v1.ContainerStorageLbl]string, error)
+	CS(dc string) (map[v1.VolumeProvisionerProfileLabel]string, error)
 }
 
 // nomadUtil is the concrete implementation for
@@ -288,7 +288,7 @@ func (m *nomadUtil) CN(dcName string) (map[v1.ContainerNetworkingLbl]string, err
 // CS provides the container storage options in key-value pairs.
 // These persistent storage specific properties are supposed to be specific to
 // the target Nomad cluster. These pairs are provided based on datacenter.
-func (m *nomadUtil) CS(dcName string) (map[v1.ContainerStorageLbl]string, error) {
+func (m *nomadUtil) CS(dcName string) (map[v1.VolumeProvisionerProfileLabel]string, error) {
 
 	err := m.validateConf(dcName)
 	if err != nil {
@@ -302,10 +302,13 @@ func (m *nomadUtil) CS(dcName string) (map[v1.ContainerStorageLbl]string, error)
 	}
 
 	// build the cs map
-	cs := map[v1.ContainerStorageLbl]string{
+	//cs := map[v1.ContainerStorageLbl]string{
+	cs := map[v1.VolumeProvisionerProfileLabel]string{
 		// container persistent storage properties
-		v1.CSPersistenceLocationLbl: persistLoc,
-		v1.CSReplicaCountLbl:        repCount,
+		//v1.CSPersistenceLocationLbl: persistLoc,
+		v1.PVPPersistenceLocationLbl: persistLoc,
+		//v1.CSReplicaCountLbl:        repCount,
+		v1.PVPReplicaCountLbl: repCount,
 	}
 
 	return cs, nil

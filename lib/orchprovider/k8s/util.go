@@ -3,6 +3,7 @@ package k8s
 import (
 	"fmt"
 
+	"github.com/openebs/mayaserver/lib/api/v1"
 	orchProfile "github.com/openebs/mayaserver/lib/profile/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	"k8s.io/client-go/kubernetes"
@@ -269,7 +270,7 @@ func SetReplVolumeSize(deploy k8sApisExtnsBeta1.Deployment, annotations map[stri
 }
 
 func SetIQN(vsm string, deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
-	annotations["iqn"] = "iqn.2016-09.com.openebs.jiva:" + vsm
+	annotations["iqn"] = string(v1.JivaIqnFormatPrefix) + ":" + vsm
 }
 
 func SetServiceIP(svc *k8sApiV1.Service, annotations map[string]string) {
