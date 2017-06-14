@@ -95,6 +95,9 @@ type jivaStor struct {
 	// name is the name of this jiva persistent volume provisioner.
 	name string
 
+	// isProfileSet flags if the volume provisioner profile is set
+	isProfileSet bool
+
 	// jivaProUtil enables all low level jiva persistent volume provisioner features.
 	jivaProUtil JivaInterface
 
@@ -212,7 +215,17 @@ func (j *jivaStor) Profile(pvc *v1.PersistentVolumeClaim) (bool, error) {
 		return true, err
 	}
 
-	return j.jivaProUtil.JivaProProfile(vProfl)
+	supported, err := j.jivaProUtil.JivaProProfile(vProfl)
+	if err == nil && supported {
+		j.isProfileSet = true
+	}
+
+	return supported, err
+}
+
+// isProfile indicates if volume provisioner profile was set earlier
+func (j *jivaStor) isProfile() bool {
+	return j.isProfileSet
 }
 
 // TODO
@@ -243,6 +256,29 @@ func (j *jivaStor) Reader() (volumeprovisioner.Reader, bool) {
 //    This is one of the concrete implementations of volume.VolumeInterface
 func (j *jivaStor) Adder() (volumeprovisioner.Adder, bool) {
 	return j, true
+}
+
+// Lister provides a instance of volume.Lister interface.
+// Since jivaStor implements volume.Lister, it returns self.
+//
+// NOTE:
+//    This is one of the concrete implementations of volume.VolumeInterface
+func (j *jivaStor) Lister() (volumeprovisioner.Lister, bool, error) {
+	if j.jivaProUtil == nil {
+		return nil, true, fmt.Errorf("Jiva provisioner util is not set at 'jiva provisioner: %s:%s'", j.Label(), j.Name())
+	}
+
+	if !j.isProfile() {
+		return nil, true, fmt.Errorf("Jiva provisioner profile is not set at 'jiva provisioner: %s:%s' with 'provisioner util: %s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	// Lister depends on jiva provisioner util's StorageOps
+	_, supported := j.jivaProUtil.StorageOps()
+	if !supported {
+		return nil, true, fmt.Errorf("Storage operations not supported by 'jiva provisioner: %s:%s' with 'provisioner util: %s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	return j, true, nil
 }
 
 // TODO
@@ -281,6 +317,21 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 	return j.jStorOps.StorageInfo(pvc)
 }
 
+// List provides a collection of jiva persistent volumes
+//
+// NOTE:
+//    This is expected to be invoked after setting the volume provisioner
+// profile
+//
+// NOTE:
+//    This is a concrete implementation of volume.Lister interface
+func (j *jivaStor) List() (*v1.PersistentVolumeList, error) {
+	// Delegate to the storage util
+	storOps, _ := j.jivaProUtil.StorageOps()
+
+	return storOps.ListStorage()
+}
+
 // TODO
 // pvc need not be passed at all as it should have been set via Profile()
 //
@@ -294,7 +345,7 @@ func (j *jivaStor) Info(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 //    This is a concrete implementation of volume.Informer interface
 func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// TODO
-	// Validations of input i.e. claim
+	// Move the validations to j.Reader()
 
 	// Delegate to the storage util
 	storOps, supported := j.jivaProUtil.StorageOps()
@@ -318,7 +369,7 @@ func (j *jivaStor) Read(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, er
 //    This is a concrete implementation of volume.Adder interface
 func (j *jivaStor) Add(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {
 	// TODO
-	// Validations of input i.e. claim
+	// Move the validations to j.Adder()
 
 	// Delegate to the storage util
 	storOps, supported := j.jivaProUtil.StorageOps()

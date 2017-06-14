@@ -78,6 +78,22 @@ type VolumeInterface interface {
 	//    Will return false if creating persistent volume is not
 	// supported by this persistent volume provisioner.
 	Adder() (Adder, bool)
+
+	// Lister gets the instance capable of listing persistent volumes
+	// w.r.t this persistent volume provisioner.
+	//
+	// Note:
+	//    Will return false if listing persistent volumes is not
+	// supported by this persistent volume provisioner.
+	Lister() (Lister, bool, error)
+}
+
+// Lister interface abstracts listing of persistent volumes from a persistent
+// volume provisioner.
+type Lister interface {
+	// List fetches a collection of persistent volumes created by this volume
+	// provisioner
+	List() (*v1.PersistentVolumeList, error)
 }
 
 // TODO

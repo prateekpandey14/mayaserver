@@ -208,6 +208,41 @@ const (
 	PVCProvisionerProfile VolumeProvisionerProfileRegistry = "pvc"
 )
 
+type GenericAnnotations string
+
+const (
+	// VolumeProvisionerSelectorKey is used to filter VSMs
+	VolumeProvisionerSelectorKey GenericAnnotations = "openebs/volume-provisioner"
+
+	// ControllerSelectorKey is used to filter controllers
+	ControllerSelectorKey GenericAnnotations = "openebs/controller"
+
+	// ReplicaSelectorKey is used to filter replicas
+	ReplicaSelectorKey GenericAnnotations = "openebs/replica"
+
+	// SelectorEquals is used to filter
+	SelectorEquals GenericAnnotations = "="
+
+	// VSMSelectorKey is used to filter vsm
+	VSMSelectorKey GenericAnnotations = "vsm"
+
+	// VSMSelectorPrefix is used to filter vsm by name when
+	// selector logic is used
+	VSMSelectorPrefix GenericAnnotations = VSMSelectorKey + "="
+
+	// ControllerSuffix is used as a suffix for controller related names
+	ControllerSuffix GenericAnnotations = "-ctrl"
+
+	// ReplicaSuffix is used as a suffix for replica related names
+	ReplicaSuffix GenericAnnotations = "-rep"
+
+	// ServiceSuffix is used as a suffix for service related names
+	ServiceSuffix GenericAnnotations = "-svc"
+
+	// ControllerSuffix is used as a suffix for container related names
+	ContainerSuffix GenericAnnotations = "-con"
+)
+
 // TODO
 // Move these to jiva folder
 //
@@ -222,28 +257,8 @@ type JivaAnnotations string
 // TODO
 // Rename these const s.t. they start with Jiva as Key Word
 const (
-	// VSMIdentifier is used to filter vsm by name
-	VSMIdentifier JivaAnnotations = "vsm"
-
-	// VSMSelectorPrefix is used to filter vsm by name when
-	// selector logic is used
-	VSMSelectorPrefix JivaAnnotations = VSMIdentifier + "="
-
-	// ControllerSuffix is used as a suffix for persistent volume controller
-	// related names
-	ControllerSuffix JivaAnnotations = "-ctrl"
-
-	// JivaReplicaSuffix is used as a suffix for persistent volume replica
-	// related names
-	JivaReplicaSuffix JivaAnnotations = "-rep"
-
-	// ServiceSuffix is used as a suffix for persistent volume controller
-	// related names
-	ServiceSuffix JivaAnnotations = "-svc"
-
-	// ControllerSuffix is used as a suffix for persistent volume container
-	// related names
-	ContainerSuffix JivaAnnotations = "-con"
+	// JivaVolumeProvisionerSelectorValue is used to filter jiva based objects
+	JivaVolumeProvisionerSelectorValue JivaAnnotations = "jiva"
 
 	// PortNameISCSI is the name given to iscsi ports
 	PortNameISCSI JivaAnnotations = "iscsi"

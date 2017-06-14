@@ -127,7 +127,7 @@ metadata:
 ```bash
 curl -k -H "Content-Type: application/yaml" \
   -XPOST -d"$(cat my-jiva-vsm.yaml)" \
-  http://10.44.0.1:5656/latest/vsm/
+  http://10.44.0.1:5656/latest/vsms/
 ```
 
 ```json
@@ -163,11 +163,11 @@ curl -k -H "Content-Type: application/yaml" \
 ##### Read an existing VSM
 
 ```bash
-curl http://10.44.0.1:5656/latest/vsm/read/<vsm-name>
+curl http://10.44.0.1:5656/latest/vsms/read/<vsm-name>
 
 # e.g.
 
-curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
+curl http://10.44.0.1:5656/latest/vsms/read/my-jiva-vsm
 ```
 
 ```json
@@ -196,6 +196,49 @@ curl http://10.44.0.1:5656/latest/vsm/read/my-jiva-vsm
     "Message": "",
     "Phase": "",
     "Reason": ""
+  }
+}
+```
+
+##### List all VSMs
+
+```bash
+curl http://10.44.0.1:5656/latest/vsms/
+```
+
+```json
+{
+  "items": [
+    {
+      "metadata": {
+        "annotations": {
+          "be.jiva.volume.openebs.io\/count": "1",
+          "be.jiva.volume.openebs.io\/vol-size": "2G",
+          "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
+          "targetportal": "10.97.96.96:3260"
+        },
+        "creationTimestamp": null,
+        "name": "my-jiva-vsm"
+      },
+      "spec": {
+        "AccessModes": null,
+        "Capacity": null,
+        "ClaimRef": null,
+        "OpenEBS": {
+          "volumeID": ""
+        },
+        "PersistentVolumeReclaimPolicy": "",
+        "StorageClassName": ""
+      },
+      "status": {
+        "Message": "",
+        "Phase": "",
+        "Reason": ""
+      }
+    }
+  ],
+  "metadata": {
+    
   }
 }
 ```

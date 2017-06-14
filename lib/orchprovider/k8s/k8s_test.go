@@ -1293,7 +1293,7 @@ func (e *okReadStorageDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisEx
 	d := k8sApisExtnsV1Beta1.Deployment{}
 	d.Name = "ok-vsm-name"
 	d.Labels = map[string]string{
-		string(v1.VSMIdentifier): "ok-vsm-name",
+		string(v1.VSMSelectorKey): "ok-vsm-name",
 	}
 
 	dl := &k8sApisExtnsV1Beta1.DeploymentList{
@@ -1314,7 +1314,7 @@ func (e *okReadStoragePodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList
 	p := k8sApiv1.Pod{}
 	p.Name = "ok-vsm-name"
 	p.Labels = map[string]string{
-		string(v1.VSMIdentifier): "ok-vsm-name",
+		string(v1.VSMSelectorKey): "ok-vsm-name",
 	}
 
 	l := &k8sApiv1.PodList{
@@ -1570,7 +1570,7 @@ func TestCreateControllerServiceReturnsOk(t *testing.T) {
 	}
 
 	// Verify the service spec labels
-	eSelectorStr := string(v1.VSMSelectorPrefix) + vsm + string(v1.ControllerSuffix)
+	eSelectorStr := string(v1.ControllerSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ControllerSuffix)
 	eSelector, _ := labels.Parse(eSelectorStr)
 	if !eSelector.Matches(labels.Set(svc.Spec.Selector)) {
 		t.Errorf("TestCase: Selector Match \n\tExpectedSelector: '%s' \n\tActualSelector: '%s'", eSelector, labels.Set(svc.Spec.Selector))

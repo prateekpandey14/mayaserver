@@ -76,6 +76,9 @@ type StorageOps interface {
 
 	AddStorage(*v1.PersistentVolumeClaim) (*v1.PersistentVolume, error)
 
+	// ListStorage will list a collection of persistent volumes
+	ListStorage() (*v1.PersistentVolumeList, error)
+
 	// Delete operation
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
 
@@ -229,6 +232,41 @@ func (j *jivaUtil) StorageInfo(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVol
 	return storageOrchestrator.StorageInfoReq(pvc)
 }
 
+// ListStorage fetches a collection of jiva persistent volumes.
+// It gets the appropriate orchestration provider to delegate further execution.
+func (j *jivaUtil) ListStorage() (*v1.PersistentVolumeList, error) {
+	// TODO
+	// Move the below set of validations to StorageOps()
+	if j.jivaProProfile == nil {
+		return nil, fmt.Errorf("Volume provisioner profile not set in '%s'", j.Name())
+	}
+
+	oName, supported, err := j.jivaProProfile.Orchestrator()
+	if err != nil {
+		return nil, err
+	}
+
+	if !supported {
+		return nil, fmt.Errorf("No orchestrator support in '%s:%s'", j.jivaProProfile.Label(), j.jivaProProfile.Name())
+	}
+
+	orchestrator, err := orchprovider.GetOrchestrator(oName)
+	if err != nil {
+		return nil, err
+	}
+
+	storageOrchestrator, ok := orchestrator.StorageOps()
+
+	if !ok {
+		return nil, fmt.Errorf("Storage operations not supported by orchestrator '%s'", orchestrator.Name())
+	}
+
+	return storageOrchestrator.ListStorage(j.jivaProProfile)
+}
+
+// TODO
+// Remove the use of pvc
+//
 // ReadStorage fetches details of a jiva persistent volume.
 // It gets the appropriate orchestration provider to delegate further execution.
 func (j *jivaUtil) ReadStorage(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolume, error) {

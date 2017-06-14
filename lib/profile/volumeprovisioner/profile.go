@@ -38,6 +38,14 @@ type VolumeProvisionerProfile interface {
 	// these container specific orchestrators.
 	Orchestrator() (v1.OrchProviderRegistry, bool, error)
 
+	// Copy returns a copy of this volume provisioner profile
+	//
+	// NOTE:
+	//    In certain cases, name of VSM is derived much later & hence this
+	// method provides the option to set VSM name against a copy of this volume
+	// provisioner profile.
+	Copy(vsm string) (VolumeProvisionerProfile, error)
+
 	// Get the name of the VSM
 	VSMName() (string, error)
 
@@ -137,7 +145,8 @@ func GetVolProProfileByName(name string, pvc *v1.PersistentVolumeClaim) (VolumeP
 //    This is a concrete implementation of
 // volumeprovisioner.VolumeProvisionerProfile
 type pvcVolProProfile struct {
-	pvc *v1.PersistentVolumeClaim
+	pvc     *v1.PersistentVolumeClaim
+	vsmName string
 }
 
 // newPvcVolProProfile provides a new instance of VolumeProvisionerProfile that is
@@ -191,12 +200,46 @@ func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error
 	return oName, true, nil
 }
 
+// Copy returns a copy of this volume provisioner profile
+//
+// NOTE:
+//    In certain cases, name of VSM is derived much later & hence this
+// method provides the runtime option to set VSM name against a copy of this
+// volume provisioner profile.
+func (pp *pvcVolProProfile) Copy(vsm string) (VolumeProvisionerProfile, error) {
+
+	if pp == nil {
+		return nil, nil
+	}
+
+	t := strings.TrimSpace(vsm)
+
+	if t == "" {
+		return nil, fmt.Errorf("Empty VSM name provided")
+	}
+
+	// copy
+	n := new(pvcVolProProfile)
+	*n = *pp
+
+	n.vsmName = t
+
+	return n, nil
+}
+
 // VSMName gets the name of the VSM
 // Operator must provide this.
 func (pp *pvcVolProProfile) VSMName() (string, error) {
 	// Extract the VSM name from PVC
 	// Name of PVC is the name of VSM
-	vsmName := v1.VSMName(pp.pvc.Name)
+	vsmName := strings.TrimSpace(v1.VSMName(pp.pvc.Name))
+
+	// This might be a case where VSM name was set at runtime
+	// during the life span of the request & not during the initiation of
+	// this volume provisioner profile. Hence, check the runtime VSM name as well.
+	if vsmName == "" {
+		vsmName = pp.vsmName
+	}
 
 	if vsmName == "" {
 		return "", fmt.Errorf("Missing VSM name in '%s:%s'", pp.Label(), pp.Name())

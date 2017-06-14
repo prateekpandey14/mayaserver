@@ -122,4 +122,8 @@ type StorageOps interface {
 	// TODO
 	//    Use VSM as the return type than *v1.PersistentVolumeList
 	ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+
+	// ListStorage will list a collection of VSMs in a given context e.g. namespace
+	// if working in a K8s setup, etc.
+	ListStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error)
 }

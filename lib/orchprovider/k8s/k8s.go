@@ -5,6 +5,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/openebs/mayaserver/lib/api/v1"
@@ -220,15 +221,29 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 		return nil, fmt.Errorf("Nil volume provisioner profile provided")
 	}
 
-	vsm, err := volProProfile.VSMName()
-	if err != nil {
-		return nil, err
+	// volProProfile is expected to have the VSM name
+	return k.readVSM("", volProProfile)
+}
+
+// readVSM will fetch information about a VSM
+func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
+	if volProProfile == nil {
+		return nil, fmt.Errorf("Nil volume provisioner profile provided")
+	}
+
+	// fetch VSM if not provided
+	if vsm == "" {
+		v, err := volProProfile.VSMName()
+		if err != nil {
+			return nil, err
+		}
+		vsm = v
 	}
 
 	annotations := map[string]string{}
 
 	// deployment(s) related details
-	err = k.readFromDeployments(vsm, volProProfile, annotations)
+	err := k.readFromDeployments(vsm, volProProfile, annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -244,6 +259,50 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 	pv.Annotations = annotations
 
 	return pv, nil
+}
+
+// ListStorage will list a collections of VSMs
+func (k *k8sOrchestrator) ListStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
+	if volProProfile == nil {
+		return nil, fmt.Errorf("Nil volume provisioner profile provided")
+	}
+
+	glog.Infof("Listing VSMs at orchestrator '%s: %s'", k.Label(), k.Name())
+
+	dl, err := k.getVSMDeployments(volProProfile)
+	if err != nil {
+		return nil, err
+	}
+
+	if dl == nil || dl.Items == nil || len(dl.Items) == 0 {
+		return nil, nil
+	}
+
+	pvl := &v1.PersistentVolumeList{}
+
+	for _, d := range dl.Items {
+
+		// consider either controller or replica to filter the VSMs
+		// we are considering only controller
+		if strings.Contains(d.Name, string(v1.ReplicaSuffix)) {
+			continue
+		}
+
+		vsm := v1.SanitiseVSMName(d.Name)
+		if vsm == "" {
+			return nil, fmt.Errorf("VSM name could not be determined from K8s Deployment 'name: %s'", d.Name)
+		}
+
+		pv, err := k.readVSM(vsm, volProProfile)
+		if err != nil {
+			return nil, err
+		}
+		pvl.Items = append(pvl.Items, *pv)
+	}
+
+	glog.Infof("Listed VSMs 'count: %d' at orchestrator '%s: %s'", len(pvl.Items), k.Label(), k.Name())
+
+	return pvl, nil
 }
 
 // TODO
@@ -302,7 +361,8 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 		ObjectMeta: k8sApiV1.ObjectMeta{
 			Name: vsm + string(v1.ControllerSuffix),
 			Labels: map[string]string{
-				string(v1.VSMIdentifier): vsm,
+				string(v1.VSMSelectorKey):               vsm,
+				string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
 			},
 		},
 		TypeMeta: k8sUnversioned.TypeMeta{
@@ -314,7 +374,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 			Template: k8sApiV1.PodTemplateSpec{
 				ObjectMeta: k8sApiV1.ObjectMeta{
 					Labels: map[string]string{
-						string(v1.VSMIdentifier): vsm,
+						string(v1.ControllerSelectorKey): vsm + string(v1.ControllerSuffix),
 					},
 				},
 				Spec: k8sApiV1.PodSpec{
@@ -417,9 +477,10 @@ func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.Volu
 
 	deploy := &k8sApisExtnsBeta1.Deployment{
 		ObjectMeta: k8sApiV1.ObjectMeta{
-			Name: vsm + string(v1.JivaReplicaSuffix),
+			Name: vsm + string(v1.ReplicaSuffix),
 			Labels: map[string]string{
-				string(v1.VSMIdentifier): vsm,
+				string(v1.VSMSelectorKey):               vsm,
+				string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
 			},
 		},
 		TypeMeta: k8sUnversioned.TypeMeta{
@@ -431,13 +492,13 @@ func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.Volu
 			Template: k8sApiV1.PodTemplateSpec{
 				ObjectMeta: k8sApiV1.ObjectMeta{
 					Labels: map[string]string{
-						string(v1.VSMIdentifier): vsm,
+						string(v1.ReplicaSelectorKey): vsm + string(v1.ReplicaSuffix),
 					},
 				},
 				Spec: k8sApiV1.PodSpec{
 					Containers: []k8sApiV1.Container{
 						k8sApiV1.Container{
-							Name:    vsm + string(v1.JivaReplicaSuffix) + string(v1.ContainerSuffix),
+							Name:    vsm + string(v1.ReplicaSuffix) + string(v1.ContainerSuffix),
 							Image:   rImg,
 							Command: v1.JivaReplicaCmd,
 							Args:    v1.MakeOrDefJivaReplicaArgs(pvc.Labels, ctrlIP),
@@ -519,7 +580,8 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svc.APIVersion = string(v1.K8sServiceVersion)
 	svc.Name = vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix)
 	svc.Labels = map[string]string{
-		string(v1.VSMIdentifier): vsm,
+		string(v1.VSMSelectorKey):               vsm,
+		string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
 	}
 
 	iscsiPort := k8sApiV1.ServicePort{}
@@ -534,7 +596,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svcSpec.Ports = []k8sApiV1.ServicePort{iscsiPort, apiPort}
 	// Set the selector that identifies the controller VSM
 	svcSpec.Selector = map[string]string{
-		string(v1.VSMIdentifier): vsm + string(v1.ControllerSuffix),
+		string(v1.ControllerSelectorKey): vsm + string(v1.ControllerSuffix),
 	}
 
 	// Set the service spec
@@ -555,7 +617,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 // getControllerServiceDetails fetches the service name & service IP address
 // associated with the VSM
 func (k *k8sOrchestrator) getControllerServiceDetails(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
-	svc, err := k.getControllerService(volProProfile)
+	svc, err := k.getControllerService("", volProProfile)
 	if err != nil {
 		return "", "", err
 	}
@@ -564,11 +626,14 @@ func (k *k8sOrchestrator) getControllerServiceDetails(volProProfile volProfile.V
 }
 
 // getControllerService fetches the service associated with the VSM
-func (k *k8sOrchestrator) getControllerService(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Service, error) {
-	// fetch VSM name
-	vsm, err := volProProfile.VSMName()
-	if err != nil {
-		return nil, err
+func (k *k8sOrchestrator) getControllerService(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Service, error) {
+	// fetch VSM if not provided
+	if vsm == "" {
+		v, err := volProProfile.VSMName()
+		if err != nil {
+			return nil, err
+		}
+		vsm = v
 	}
 
 	k8sUtl := k8sOrchUtil(k, volProProfile)
@@ -592,8 +657,16 @@ func (k *k8sOrchestrator) getControllerService(volProProfile volProfile.VolumePr
 //
 // Transform a VSM to a PersistentVolume
 func (k *k8sOrchestrator) readFromDeployments(vsm string, volProProfile volProfile.VolumeProvisionerProfile, annotations map[string]string) error {
+	// fetch VSM if not provided
+	if vsm == "" {
+		v, err := volProProfile.VSMName()
+		if err != nil {
+			return err
+		}
+		vsm = v
+	}
 
-	dl, err := k.getDeploymentList(volProProfile)
+	dl, err := k.getDeploymentList(vsm, volProProfile)
 	if err != nil {
 		return err
 	}
@@ -608,7 +681,7 @@ func (k *k8sOrchestrator) readFromDeployments(vsm string, volProProfile volProfi
 			SetCtrlDeployConditions(deploy, annotations)
 		}
 		// w.r.t replica
-		if deploy.Name == vsm+string(v1.JivaReplicaSuffix) {
+		if deploy.Name == vsm+string(v1.ReplicaSuffix) {
 			SetReplDeployConditions(deploy, annotations)
 			SetReplIPs(deploy, annotations)
 			SetReplCount(deploy, annotations)
@@ -621,8 +694,17 @@ func (k *k8sOrchestrator) readFromDeployments(vsm string, volProProfile volProfi
 }
 
 func (k *k8sOrchestrator) readFromService(vsm string, volProProfile volProfile.VolumeProvisionerProfile, annotations map[string]string) error {
+	// fetch VSM if not provided
+	if vsm == "" {
+		v, err := volProProfile.VSMName()
+		if err != nil {
+			return err
+		}
+		vsm = v
+	}
+
 	// w.r.t service
-	svc, err := k.getControllerService(volProProfile)
+	svc, err := k.getControllerService(vsm, volProProfile)
 	if err != nil {
 		return err
 	}
@@ -634,16 +716,14 @@ func (k *k8sOrchestrator) readFromService(vsm string, volProProfile volProfile.V
 }
 
 // getDeploymentList fetches the deployments associated with the VSM
-func (k *k8sOrchestrator) getDeploymentList(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
-	// NOTE:
-	//    A VSM can be one or more k8s deployments
-	//
-	// NOTE:
-	//    maya api service assigns the VSM name as one of the labels against all
-	// the pods created during creation of persistent volume
-	vsm, err := volProProfile.VSMName()
-	if err != nil {
-		return nil, err
+func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
+	// fetch VSM if not provided
+	if vsm == "" {
+		v, err := volProProfile.VSMName()
+		if err != nil {
+			return nil, err
+		}
+		vsm = v
 	}
 
 	k8sUtl := k8sOrchUtil(k, volProProfile)
@@ -703,4 +783,59 @@ func (k *k8sOrchestrator) getDeploymentList(volProProfile volProfile.VolumeProvi
 	}
 
 	return fdl, nil
+}
+
+// getVSMDeployments fetches the VSM related deployments
+func (k *k8sOrchestrator) getVSMDeployments(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
+
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	dOps, err := kc.DeploymentOps()
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO
+	// Does this filtering work ??
+	lOpts := k8sApiV1.ListOptions{
+		LabelSelector: string(v1.VolumeProvisionerSelectorKey) + string(v1.SelectorEquals) + string(v1.JivaVolumeProvisionerSelectorValue),
+	}
+
+	vsmList, err := dOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if vsmList == nil || vsmList.Items == nil || len(vsmList.Items) == 0 {
+		return nil, nil
+	}
+
+	return vsmList, nil
+
+	//eSelectorStr := string(v1.JivaSelectorKey) + string(v1.JivaSelectorEquals) + string(v1.JivaSelectorValue)
+	//eSelector, err := labels.Parse(eSelectorStr)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	// filtered deployment list
+	// Above filtering does not work
+	//fVSMList := &k8sApisExtnsBeta1.DeploymentList{}
+
+	//for _, item := range vsmList.Items {
+	//	if eSelector.Matches(labels.Set(item.Labels)) {
+	//		fVSMList.Items = append(fVSMList.Items, item)
+	//	}
+	//}
+
+	//if fVSMList == nil || len(fVSMList.Items) == 0 {
+	//	return nil, nil
+	//}
+
+	//return fVSMList, nil
 }

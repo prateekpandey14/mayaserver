@@ -503,3 +503,13 @@ func DefaultJivaReplicaPort3() int32 {
 	p, _ := strconv.Atoi(string(JivaReplicaPortThreeDef))
 	return int32(p)
 }
+
+//
+func SanitiseVSMName(vsm string) string {
+	// Trim the controller suffix if controller based
+	v := strings.TrimSuffix(vsm, string(ControllerSuffix))
+	// Or Trim the replica suffix if replica based
+	v = strings.TrimSuffix(v, string(ReplicaSuffix))
+
+	return v
+}
