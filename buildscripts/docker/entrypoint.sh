@@ -29,3 +29,5 @@ sed -i "s/__CS_REPLICA_COUNT__/${NOMAD_CS_REPLICA_COUNT}/g" /etc/mayaserver/orch
 
 # Start M-APISERVER service
 exec /usr/local/bin/m-apiserver up -bind="${CONTAINER_IP_ADDR}" 1>&2
+
+echo "export MAPI_ADDR=http://${CONTAINER_IP_ADDR}:5656/" >> ~/.bashrc
