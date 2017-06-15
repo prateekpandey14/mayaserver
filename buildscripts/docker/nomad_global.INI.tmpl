@@ -1,12 +1,12 @@
 [datacenter "dc1"]
 ; Address of Nomad deployment
-address = __NOMAD_ADDR__
+address = "http://172.28.128.3:4646"
 
 ; Container Networking options
-cn-type = __CN_TYPE__
-cn-network-cidr = __CN_NETWORK_CIDR__
-cn-interface = __CN_INTERFACE__
+cn-type = "host"
+cn-network-cidr = "172.28.128.1/24"
+cn-interface = "eth0"
 
 ; Container Storage options
-cs-persistence-location = __CS_PERSISTENCE_LOCATION__
-cs-replica-count = __CS_REPLICA_COUNT__
+cs-persistence-location = "/tmp/"
+cs-replica-count = "2"
