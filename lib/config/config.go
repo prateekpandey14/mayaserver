@@ -109,7 +109,7 @@ func DefaultMayaConfig() *MayaConfig {
 		LogLevel:   "INFO",
 		Region:     "global",
 		Datacenter: "dc1",
-		BindAddr:   "127.0.0.1",
+		BindAddr:   "",
 		Ports: &Ports{
 			HTTP: 5656,
 		},
