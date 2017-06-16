@@ -328,7 +328,7 @@ const (
 
 	// JivaPersistentPathDef is used to set default value for
 	// persistent volume's persist path
-	JivaPersistentPathDef JivaDefaults = "/tmp"
+	JivaPersistentPathDef JivaDefaults = "/var/openebs"
 
 	// JivaStorSizeDef is used to set default value for
 	// persistent volume's persist path
