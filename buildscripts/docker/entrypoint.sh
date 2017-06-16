@@ -28,6 +28,6 @@ CONTAINER_IP_ADDR=$(ip -4 addr show scope global dev "${MAYA_API_SERVER_NETWORK}
 #sed -i "s/__CS_REPLICA_COUNT__/${NOMAD_CS_REPLICA_COUNT}/g" /etc/mayaserver/orchprovider/nomad_global.INI
 
 # Start M-APISERVER service
-#exec /usr/local/bin/m-apiserver up -bind="${CONTAINER_IP_ADDR}" 1>&2
+exec /usr/local/bin/m-apiserver up -bind="${CONTAINER_IP_ADDR}" 1>&2
 
-exec /usr/local/bin/m-apiserver up 1>&2
+#exec /usr/local/bin/m-apiserver up 1>&2
