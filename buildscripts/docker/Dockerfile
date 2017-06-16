@@ -22,6 +22,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     curl \
     net-tools \
+    watch \
  && rm -rf /var/lib/apt/lists/*
     
 RUN mkdir -p /etc/mayaserver/orchprovider
