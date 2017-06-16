@@ -183,6 +183,7 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 			s.logger.Printf("[DEBUG] http: Request %v (%v)", reqURL, time.Now().Sub(start))
 		}()
 
+		s.logger.Printf("[DEBUG] http: Request %v (%v)", reqURL, req.Method)
 		// Original handler is invoked
 		obj, err := handler(resp, req)
 
@@ -190,7 +191,7 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 		// Below err block for re-usability
 	HAS_ERR:
 		if err != nil {
-			s.logger.Printf("[ERR] http: Request %v, error: %v", reqURL, err)
+			s.logger.Printf("[ERR] http: Request %v %v, error: %v", req.Method, reqURL, err)
 			code := 500
 			if http, ok := err.(HTTPCodedError); ok {
 				code = http.Code()

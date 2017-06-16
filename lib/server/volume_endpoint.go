@@ -186,6 +186,7 @@ func (s *HTTPServer) volumeInfo(resp http.ResponseWriter, req *http.Request, vol
 //    Should it return specific types than interface{} ?
 func (s *HTTPServer) VSMSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
 
+	s.logger.Printf("[DEBUG] Processing %v request", req.Method )
 	switch req.Method {
 	case "PUT", "POST":
 		return s.vsmAdd(resp, req)
@@ -220,6 +221,7 @@ func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.R
 
 // vsmList is the http handler that lists VSMs
 func (s *HTTPServer) vsmList(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
+	s.logger.Printf("[DEBUG] Processing vsmList request" )
 	// Get jiva persistent volume provisioner instance
 	jiva, err := volumeprovisioner.GetVolumeProvisioner()
 	if err != nil {
@@ -254,7 +256,7 @@ func (s *HTTPServer) vsmList(resp http.ResponseWriter, req *http.Request) (inter
 
 // vsmRead is the http handler that fetches the details of a VSM
 func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmName string) (interface{}, error) {
-
+	s.logger.Printf("[DEBUG] Processing vsmRead request" )
 	if vsmName == "" {
 		return nil, fmt.Errorf("VSM name is missing")
 	}
@@ -292,7 +294,7 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 
 // vsmAdd is the http handler that fetches the details of a VSM
 func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-
+	s.logger.Printf("[DEBUG] Processing vsmAdd request" )
 	pvc := v1.PersistentVolumeClaim{}
 
 	// The yaml/json spec is decoded to pvc struct
