@@ -237,7 +237,7 @@ const (
 	// ServiceSuffix is used as a suffix for service related names
 	ServiceSuffix GenericAnnotations = "-svc"
 
-	// ControllerSuffix is used as a suffix for container related names
+	// ContainerSuffix is used as a suffix for container related names
 	ContainerSuffix GenericAnnotations = "-con"
 )
 

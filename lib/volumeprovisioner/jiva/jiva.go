@@ -281,6 +281,29 @@ func (j *jivaStor) Lister() (volumeprovisioner.Lister, bool, error) {
 	return j, true, nil
 }
 
+// Remover provides a instance of volume.Remover interface.
+// Since jivaStor implements volume.Remover, it returns self.
+//
+// NOTE:
+//    This is one of the concrete implementations of volume.VolumeInterface
+func (j *jivaStor) Remover() (volumeprovisioner.Remover, bool, error) {
+	if j.jivaProUtil == nil {
+		return nil, true, fmt.Errorf("Jiva provisioner util is not set at 'jiva provisioner: %s:%s'", j.Label(), j.Name())
+	}
+
+	if !j.isProfile() {
+		return nil, true, fmt.Errorf("Jiva provisioner profile is not set at 'jiva provisioner: %s:%s' with 'provisioner util: %s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	// Remover depends on jiva provisioner util's StorageOps
+	_, supported := j.jivaProUtil.StorageOps()
+	if !supported {
+		return nil, true, fmt.Errorf("Storage operations not supported by 'jiva provisioner: %s:%s' with 'provisioner util: %s'", j.Label(), j.Name(), j.jivaProUtil.Name())
+	}
+
+	return j, true, nil
+}
+
 // TODO
 // Deprecate in favour of Adder
 //
@@ -395,6 +418,9 @@ func (j *jivaStor) Provision(pvc *v1.PersistentVolumeClaim) (*v1.PersistentVolum
 	return j.jStorOps.ProvisionStorage(pvc)
 }
 
+// TODO
+// Deprecate in favour of Remove
+//
 // Delete removes a jiva volume
 //
 // NOTE:
@@ -405,4 +431,16 @@ func (j *jivaStor) Delete(pv *v1.PersistentVolume) (*v1.PersistentVolume, error)
 	// Validations if any
 
 	return j.jStorOps.DeleteStorage(pv)
+}
+
+// Remove removes a jiva volume
+//
+// NOTE:
+//    This is a concrete implementation of volume.Remover interface
+func (j *jivaStor) Remove() error {
+
+	// Delegate to the storage util
+	storOps, _ := j.jivaProUtil.StorageOps()
+
+	return storOps.RemoveStorage()
 }

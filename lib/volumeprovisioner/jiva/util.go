@@ -79,8 +79,13 @@ type StorageOps interface {
 	// ListStorage will list a collection of persistent volumes
 	ListStorage() (*v1.PersistentVolumeList, error)
 
+	// TODO
+	// Deprecate in favour of RemoveStorage
 	// Delete operation
 	DeleteStorage(*v1.PersistentVolume) (*v1.PersistentVolume, error)
+
+	// Delete operation
+	RemoveStorage() error
 
 	// TODO
 	// Remove this once Persistent Volume Provisioner profiles come into picture
@@ -785,6 +790,9 @@ func setBackendIPsAsString(ips []string, pvc *v1.PersistentVolumeClaim) error {
 
 }
 
+// TODO
+// Deprecate in favour of DelStorage & then rename DelStorage to DeleteStorage
+//
 // DeleteStorage tries to delete the jiva volume via an orchestrator
 func (j *jivaUtil) DeleteStorage(pv *v1.PersistentVolume) (*v1.PersistentVolume, error) {
 	orchestrator, err := j.aspect.GetOrchProvider()
@@ -799,4 +807,35 @@ func (j *jivaUtil) DeleteStorage(pv *v1.PersistentVolume) (*v1.PersistentVolume,
 	}
 
 	return storageOrchestrator.StorageRemovalReq(pv)
+}
+
+// RemoveStorage removes the peristent storage
+func (j *jivaUtil) RemoveStorage() error {
+	// TODO
+	// Move the below set of validations to StorageOps()
+	if j.jivaProProfile == nil {
+		return fmt.Errorf("Volume provisioner profile not set in '%s'", j.Name())
+	}
+
+	oName, supported, err := j.jivaProProfile.Orchestrator()
+	if err != nil {
+		return err
+	}
+
+	if !supported {
+		return fmt.Errorf("No orchestrator support in '%s:%s'", j.jivaProProfile.Label(), j.jivaProProfile.Name())
+	}
+
+	orchestrator, err := orchprovider.GetOrchestrator(oName)
+	if err != nil {
+		return err
+	}
+
+	storageOrchestrator, ok := orchestrator.StorageOps()
+
+	if !ok {
+		return fmt.Errorf("Storage operations not supported by orchestrator '%s'", orchestrator.Name())
+	}
+
+	return storageOrchestrator.DeleteStorage(j.jivaProProfile)
 }

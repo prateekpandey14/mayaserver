@@ -116,7 +116,7 @@ type StorageOps interface {
 	// DeleteStorage will remove the persistent volume
 	// TODO
 	//    Use VSM as the return type than *v1.PersistentVolumeList
-	DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error)
+	DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) error
 
 	// ReadStorage will fetch information about the persistent volume
 	// TODO

@@ -11,7 +11,8 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	"k8s.io/apimachinery/pkg/labels"
+	//"k8s.io/apimachinery/pkg/labels"
+	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 	k8sApisExtnsBeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -208,9 +209,96 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 	return k.ReadStorage(volProProfile)
 }
 
-// DeleteStorage will remove the persistent volume
-func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
-	return nil, nil
+// DeleteStorage will remove the VSM
+func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) error {
+	if volProProfile == nil {
+		return fmt.Errorf("Nil volume provisioner profile provided")
+	}
+
+	vsm, err := volProProfile.VSMName()
+	if err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(vsm) == "" {
+		return fmt.Errorf("VSM name is required to delete storage")
+	}
+
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s deployment operations
+	dOps, err := kc.DeploymentOps()
+	if err != nil {
+		return err
+	}
+
+	// This ensures the dependents e.g. replicasets to be deleted
+	orphanDependents := false
+
+	// Delete the Replica Deployment first
+	err = dOps.Delete(vsm+string(v1.ReplicaSuffix), &k8sApiV1.DeleteOptions{
+		OrphanDependents: &orphanDependents,
+	})
+	if err != nil {
+		glog.Warning(err.Error())
+	}
+
+	// Delete the Controller Deployment next
+	err = dOps.Delete(vsm+string(v1.ControllerSuffix), &k8sApiV1.DeleteOptions{
+		OrphanDependents: &orphanDependents,
+	})
+	if err != nil {
+		glog.Warning(err.Error())
+	}
+
+	// fetch k8s Pod operations
+	pOps, err := kc.Pods()
+	if err != nil {
+		return err
+	}
+
+	// Delete the Replica Pods before Controller Pod(s)
+	rPods, err := k.getReplicaPods(vsm, volProProfile, pOps)
+	if err != nil {
+		glog.Warning(err.Error())
+	} else {
+		for _, rPod := range rPods.Items {
+			err = pOps.Delete(rPod.Name, &k8sApiV1.DeleteOptions{
+				OrphanDependents: &orphanDependents,
+			})
+			if err != nil {
+				glog.Warning(err.Error())
+			}
+		}
+	}
+
+	// Delete the Controller Pods next
+	cPods, err := k.getControllerPods(vsm, volProProfile, pOps)
+	if err != nil {
+		glog.Warning(err.Error())
+	} else {
+		for _, cPod := range cPods.Items {
+			err = pOps.Delete(cPod.Name, &k8sApiV1.DeleteOptions{
+				OrphanDependents: &orphanDependents,
+			})
+			if err != nil {
+				glog.Warning(err.Error())
+			}
+		}
+	}
+
+	// Delete the Service at last
+	err = k.deleteService(vsm+string(v1.ControllerSuffix)+string(v1.ServiceSuffix), volProProfile)
+	if err != nil {
+		glog.Warning(err.Error())
+	}
+
+	return nil
 }
 
 // ReadStorage will fetch information about the persistent volume
@@ -628,7 +716,7 @@ func (k *k8sOrchestrator) getControllerServiceDetails(volProProfile volProfile.V
 	return svc.Name, svc.Spec.ClusterIP, nil
 }
 
-// getControllerService fetches the service associated with the VSM
+// getControllerService fetches the service associated with the provided VSM
 func (k *k8sOrchestrator) getControllerService(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Service, error) {
 	// fetch VSM if not provided
 	if vsm == "" {
@@ -643,7 +731,7 @@ func (k *k8sOrchestrator) getControllerService(vsm string, volProProfile volProf
 
 	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+		return nil, fmt.Errorf("K8s client is not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s service operations
@@ -653,6 +741,119 @@ func (k *k8sOrchestrator) getControllerService(vsm string, volProProfile volProf
 	}
 
 	return sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+}
+
+// deleteService deletes the service associated with the provided VSM
+func (k *k8sOrchestrator) deleteService(name string, volProProfile volProfile.VolumeProvisionerProfile) error {
+	if name == "" {
+		return fmt.Errorf("Name is required to delete the K8s Service")
+	}
+
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return fmt.Errorf("K8s client is not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s service operations
+	sOps, err := kc.Services()
+	if err != nil {
+		return err
+	}
+
+	return sOps.Delete(name, &k8sApiV1.DeleteOptions{})
+}
+
+// getControllerPods fetches the Controller Pod
+func (k *k8sOrchestrator) getControllerPods(vsm string, volProProfile volProfile.VolumeProvisionerProfile, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
+	// filter the VSM Controller Pod(s)
+	pOpts := k8sApiV1.ListOptions{
+		LabelSelector: string(v1.ControllerSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ControllerSuffix),
+	}
+
+	cp, err := podOps.List(pOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return cp, nil
+}
+
+// getReplicaPods fetches the Replica Pod
+func (k *k8sOrchestrator) getReplicaPods(vsm string, volProProfile volProfile.VolumeProvisionerProfile, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
+	// filter the VSM Replica Pod(s)
+	pOpts := k8sApiV1.ListOptions{
+		LabelSelector: string(v1.ReplicaSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ReplicaSuffix),
+	}
+
+	rp, err := podOps.List(pOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return rp, nil
+}
+
+// getPods deletes the Pods w.r.t the VSM
+func (k *k8sOrchestrator) getPods(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.PodList, error) {
+
+	if strings.TrimSpace(vsm) == "" {
+		return nil, fmt.Errorf("VSM name is required to get Pods")
+	}
+
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s Pod operations
+	pOps, err := kc.Pods()
+	if err != nil {
+		return nil, err
+	}
+
+	rps, err := k.getReplicaPods(vsm, volProProfile, pOps)
+	if err != nil {
+		return nil, err
+	}
+
+	cps, err := k.getControllerPods(vsm, volProProfile, pOps)
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge the Replica & Controller Pods
+	for _, rPod := range rps.Items {
+		cps.Items = append(cps.Items, rPod)
+	}
+
+	return cps, nil
+}
+
+// getDeployment fetches the Deployment associated with the provided name of
+// deployment
+func (k *k8sOrchestrator) getDeployment(deployName string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.Deployment, error) {
+	if strings.TrimSpace(deployName) == "" {
+		return nil, fmt.Errorf("Deployment name is required to get its details")
+	}
+
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s deployment operations
+	dOps, err := kc.DeploymentOps()
+	if err != nil {
+		return nil, err
+	}
+
+	return dOps.Get(deployName)
 }
 
 // TODO
@@ -718,7 +919,7 @@ func (k *k8sOrchestrator) readFromService(vsm string, volProProfile volProfile.V
 	return nil
 }
 
-// getDeploymentList fetches the deployments associated with the VSM
+// getDeploymentList fetches the deployments associated with the provided VSM name
 func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
 	// fetch VSM if not provided
 	if vsm == "" {
@@ -762,33 +963,35 @@ func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile
 		return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
 	}
 
+	return deployList, nil
+
 	// NOTE:
 	//    Workaround for above filtering logic that does not work
 	// Get the filtered pod list based on expected label
-	eLblStr := string(v1.VSMSelectorPrefix) + vsm
-	eLbl, err := labels.Parse(eLblStr)
-	if err != nil {
-		return nil, err
-	}
+	//eLblStr := string(v1.VSMSelectorPrefix) + vsm
+	//eLbl, err := labels.Parse(eLblStr)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// filtered deployment list
 	// I believe above filtering does not work
-	fdl := &k8sApisExtnsBeta1.DeploymentList{}
+	//fdl := &k8sApisExtnsBeta1.DeploymentList{}
 
-	for _, item := range deployList.Items {
-		if eLbl.Matches(labels.Set(item.Labels)) {
-			fdl.Items = append(fdl.Items, item)
-		}
-	}
+	//for _, item := range deployList.Items {
+	//	if eLbl.Matches(labels.Set(item.Labels)) {
+	//		fdl.Items = append(fdl.Items, item)
+	//	}
+	//}
 
-	if fdl == nil || len(fdl.Items) == 0 {
-		return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
-	}
+	//if fdl == nil || len(fdl.Items) == 0 {
+	//	return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
+	//}
 
-	return fdl, nil
+	//return fdl, nil
 }
 
-// getVSMDeployments fetches the VSM related deployments
+// getVSMDeployments fetches all the VSM deployments
 func (k *k8sOrchestrator) getVSMDeployments(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
 
 	k8sUtl := k8sOrchUtil(k, volProProfile)
@@ -803,8 +1006,7 @@ func (k *k8sOrchestrator) getVSMDeployments(volProProfile volProfile.VolumeProvi
 		return nil, err
 	}
 
-	// TODO
-	// Does this filtering work ??
+	// filter the VSM deployments only
 	lOpts := k8sApiV1.ListOptions{
 		LabelSelector: string(v1.VolumeProvisionerSelectorKey) + string(v1.SelectorEquals) + string(v1.JivaVolumeProvisionerSelectorValue),
 	}
@@ -819,26 +1021,36 @@ func (k *k8sOrchestrator) getVSMDeployments(volProProfile volProfile.VolumeProvi
 	}
 
 	return vsmList, nil
+}
 
-	//eSelectorStr := string(v1.JivaSelectorKey) + string(v1.JivaSelectorEquals) + string(v1.JivaSelectorValue)
-	//eSelector, err := labels.Parse(eSelectorStr)
-	//if err != nil {
-	//	return nil, err
-	//}
+// getVSMServices fetches all the VSM services
+func (k *k8sOrchestrator) getVSMServices(volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.ServiceList, error) {
 
-	// filtered deployment list
-	// Above filtering does not work
-	//fVSMList := &k8sApisExtnsBeta1.DeploymentList{}
+	k8sUtl := k8sOrchUtil(k, volProProfile)
 
-	//for _, item := range vsmList.Items {
-	//	if eSelector.Matches(labels.Set(item.Labels)) {
-	//		fVSMList.Items = append(fVSMList.Items, item)
-	//	}
-	//}
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
 
-	//if fVSMList == nil || len(fVSMList.Items) == 0 {
-	//	return nil, nil
-	//}
+	sOps, err := kc.Services()
+	if err != nil {
+		return nil, err
+	}
 
-	//return fVSMList, nil
+	// filter the VSM services only
+	lOpts := k8sApiV1.ListOptions{
+		LabelSelector: string(v1.VolumeProvisionerSelectorKey) + string(v1.SelectorEquals) + string(v1.JivaVolumeProvisionerSelectorValue),
+	}
+
+	sList, err := sOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if sList == nil || sList.Items == nil || len(sList.Items) == 0 {
+		return nil, nil
+	}
+
+	return sList, nil
 }

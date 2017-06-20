@@ -8,6 +8,13 @@ service.
 > OpenEBS has the concept of VSM (Volume Storage Machine) to provide persistent
 storage. Maya API service provides operations w.r.t VSM as a unit.
 
+Notes:
+
+- This spec points to a `test` image(s)
+- Use of Maya operator is suggested for production / customer usecases
+- Maya operator simplifies most of these manual steps into automated ones
+- In addition, Maya operator takes care of appropriate release versions
+
 #### Launch Maya API server as a K8s Pod
 
 ##### Create the yaml specs for launching Maya API server as a K8s Pod
@@ -198,6 +205,20 @@ curl http://10.44.0.1:5656/latest/volumes/info/my-jiva-vsm
     "Reason": ""
   }
 }
+```
+
+##### Delete an existing VSM
+
+```bash
+curl http://10.44.0.1:5656/latest/volumes/delete/<vsm-name>
+
+# e.g.
+
+curl http://10.44.0.1:5656/latest/volumes/delete/my-jiva-vsm
+```
+
+```
+"VSM 'my-jiva-vsm' deleted successfully"
 ```
 
 ##### List all VSMs

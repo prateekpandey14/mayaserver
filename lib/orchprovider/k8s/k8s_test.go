@@ -1609,7 +1609,7 @@ func TestGetControllerServiceReturnsNoK8sClientSupport(t *testing.T) {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
 
-	expErr := fmt.Sprintf("K8s client not supported by '%s'", "no-k8s-client-support-k8s-util")
+	expErr := fmt.Sprintf("K8s client is not supported by '%s'", "no-k8s-client-support-k8s-util")
 
 	if err != nil && err.Error() != expErr {
 		t.Errorf("TestCase: Error Message Match \n\tExpectedErr: '%s' \n\tActualErr: '%s'", expErr, err.Error())

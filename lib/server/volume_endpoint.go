@@ -212,6 +212,9 @@ func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.R
 	case strings.Contains(path, "/info/"):
 		vsmName := strings.TrimPrefix(path, "/info/")
 		return s.vsmRead(resp, req, vsmName)
+	case strings.Contains(path, "/delete/"):
+		vsmName := strings.TrimPrefix(path, "/delete/")
+		return s.vsmDelete(resp, req, vsmName)
 	case path == "/":
 		return s.vsmList(resp, req)
 	default:
@@ -290,6 +293,46 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 	}
 
 	return details, nil
+}
+
+// vsmDelete is the http handler that fetches the details of a VSM
+func (s *HTTPServer) vsmDelete(resp http.ResponseWriter, req *http.Request, vsmName string) (interface{}, error) {
+
+	if vsmName == "" {
+		return nil, fmt.Errorf("VSM name is missing")
+	}
+
+	// Get Jiva as the default persistent volume provisioner instance
+	jiva, err := volumeprovisioner.GetVolumeProvisioner()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a PVC
+	pvc := &v1.PersistentVolumeClaim{}
+	pvc.Name = vsmName
+
+	// Set the volume provisioner profile to jiva provisioner
+	_, err = jiva.Profile(pvc)
+	if err != nil {
+		return nil, err
+	}
+
+	remover, ok, err := jiva.Remover()
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
+		return nil, fmt.Errorf("VSM delete is not supported by '%s:%s'", jiva.Label(), jiva.Name())
+	}
+
+	err = remover.Remove()
+	if err != nil {
+		return nil, err
+	}
+
+	return fmt.Sprintf("VSM '%s' deleted successfully", vsmName), nil
 }
 
 // vsmAdd is the http handler that fetches the details of a VSM

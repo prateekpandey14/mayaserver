@@ -34,6 +34,7 @@ init: bootstrap deps
 deps:
 	rm -rf vendor/github.com/
 	@echo "--> Sync with vendored repositories." ;
+	@echo "--> Run this only when there is a change in vendor dependencies." ;
 	@echo "--> Please wait, this may take a while..." ;
 	@govendor sync
 	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
@@ -57,7 +58,10 @@ cov:
 test:
 	@echo "--> Running go fmt" ;
 	@if [ -n "`go fmt ${PACKAGES}`" ]; then \
-		echo "[ERR] go fmt updated formatting. Please commit formatted code first."; \
+		echo "[ERROR] go fmt has updated the formatting in some of the .go files."; \
+		echo "--> If these files are open on any editor, then editor should reload & use the modified files."; \
+		echo "--> Save these modified source files and proceed with this operation."; \
+		echo "--> In some of the cases, these files will be auto saved. Hence, running this operation again will proceed without any formatting issues."; \
 		exit 1; \
 	fi
 	@CTLNAME=${CTLNAME} sh -c "'$(PWD)/buildscripts/test.sh'"

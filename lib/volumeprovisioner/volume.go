@@ -44,6 +44,9 @@ type VolumeInterface interface {
 	// persistent volume provisioner.
 	Provisioner() (Provisioner, bool)
 
+	// TODO
+	// Deprecate in favour of Remover
+	//
 	// Deleter gets the instance capable of deleting volumes w.r.t this
 	// persistent volume provisioner.
 	//
@@ -51,6 +54,14 @@ type VolumeInterface interface {
 	//    Will return false if deletion of volumes is not supported by the
 	// persistent volume provisioner.
 	Deleter() (Deleter, bool)
+
+	// Remover gets the instance capable of deleting volumes w.r.t this
+	// persistent volume provisioner.
+	//
+	// Note:
+	//    Will return false if deletion of volumes is not supported by the
+	// persistent volume provisioner.
+	Remover() (Remover, bool, error)
 
 	// TODO
 	// Deprecate in favour of Reader
@@ -137,4 +148,11 @@ type Adder interface {
 type Deleter interface {
 	// Delete tries to delete a volume of a persistent volume provisioner.
 	Delete(*v1.PersistentVolume) (*v1.PersistentVolume, error)
+}
+
+// Remover interface abstracts deletion of volume of a persistent volume
+// provisioner.
+type Remover interface {
+	// Delete tries to delete a volume of a persistent volume provisioner.
+	Remove() error
 }
