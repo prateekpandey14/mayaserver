@@ -13,6 +13,7 @@ import (
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	//"k8s.io/apimachinery/pkg/labels"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 	k8sApisExtnsBeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
@@ -168,26 +169,21 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 	// create k8s service of persistent volume controller
 	_, err := k.createControllerService(volProProfile)
 	if err != nil {
-		// TODO
-		// Delete the persistent volume controller pod
-		// Delegate to DeleteStorage which should handle stuff in a
-		// robust way
+		k.DeleteStorage(volProProfile)
 		return nil, err
 	}
 
 	// Get the persistent volume controller service name & IP address
 	_, clusterIP, err := k.getControllerServiceDetails(volProProfile)
 	if err != nil {
-		// TODO
-		// Delete the persistent volume controller pod
-		// Delegate to DeleteStorage which should handle stuff in a
-		// robust way
+		k.DeleteStorage(volProProfile)
 		return nil, err
 	}
 
 	// create k8s pod of persistent volume controller
 	_, err = k.createControllerDeployment(volProProfile, clusterIP)
 	if err != nil {
+		k.DeleteStorage(volProProfile)
 		return nil, err
 	}
 
@@ -197,20 +193,29 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, nil
 	}
 
-	_, err = k.createDeploymentReplicas(volProProfile, clusterIP)
+	_, err = k.createReplicaDeployment(volProProfile, clusterIP)
 	if err != nil {
-		// TODO
-		// Delete the persistent volume controller pod
-		// Delegate to DeleteStorage which should handle stuff in a
-		// robust way
+		k.DeleteStorage(volProProfile)
 		return nil, err
 	}
 
 	return k.ReadStorage(volProProfile)
 }
 
-// DeleteStorage will remove the VSM
+// DeleteStorage will remove the VSM. The logic is built in such a way that
+// ensures genuinely repeated attempts do not get errored out.
+//
+// NOTE:
+//    Current logic is an attempt to delete the dependents as cascading
+// delete option is not available.
+//
+// NOTE:
+//    This also handles the cases where creation failed mid-flight, and bail
+// out requires calling delete function.
 func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) error {
+	// Assume the presence of atleast one VSM object
+	var hasAtleastOneVSMObj bool
+
 	if volProProfile == nil {
 		return fmt.Errorf("Nil volume provisioner profile provided")
 	}
@@ -237,65 +242,113 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 		return err
 	}
 
-	// This ensures the dependents e.g. replicasets to be deleted
-	orphanDependents := false
-
-	// Delete the Replica Deployment first
-	err = dOps.Delete(vsm+string(v1.ReplicaSuffix), &k8sApiV1.DeleteOptions{
-		OrphanDependents: &orphanDependents,
-	})
-	if err != nil {
-		glog.Warning(err.Error())
-	}
-
-	// Delete the Controller Deployment next
-	err = dOps.Delete(vsm+string(v1.ControllerSuffix), &k8sApiV1.DeleteOptions{
-		OrphanDependents: &orphanDependents,
-	})
-	if err != nil {
-		glog.Warning(err.Error())
-	}
-
 	// fetch k8s Pod operations
 	pOps, err := kc.Pods()
 	if err != nil {
 		return err
 	}
 
-	// Delete the Replica Pods before Controller Pod(s)
-	rPods, err := k.getReplicaPods(vsm, volProProfile, pOps)
+	// fetch k8s service operations
+	sOps, err := kc.Services()
 	if err != nil {
-		glog.Warning(err.Error())
-	} else {
+		return err
+	}
+
+	// This ensures the dependents of Deployment e.g. ReplicaSets to be deleted
+	orphanDependents := false
+
+	// Delete the Replica Deployments first
+	rDeploys, err := k.getReplicaDeploys(vsm, dOps)
+	if err != nil {
+		return err
+	}
+
+	if rDeploys != nil && len(rDeploys.Items) > 0 {
+		hasAtleastOneVSMObj = true
+		for _, rd := range rDeploys.Items {
+			err = dOps.Delete(rd.Name, &k8sApiV1.DeleteOptions{
+				OrphanDependents: &orphanDependents,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Delete the Controller Deployments next
+	cDeploys, err := k.getControllerDeploys(vsm, dOps)
+	if err != nil {
+		return err
+	}
+
+	if cDeploys != nil && len(cDeploys.Items) > 0 {
+		hasAtleastOneVSMObj = true
+		for _, cd := range cDeploys.Items {
+			err = dOps.Delete(cd.Name, &k8sApiV1.DeleteOptions{
+				OrphanDependents: &orphanDependents,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Delete the Replica Pods before Controller Pod(s)
+	rPods, err := k.getReplicaPods(vsm, pOps)
+	if err != nil {
+		return err
+	}
+
+	if rPods != nil && len(rPods.Items) > 0 {
+		hasAtleastOneVSMObj = true
 		for _, rPod := range rPods.Items {
 			err = pOps.Delete(rPod.Name, &k8sApiV1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				glog.Warning(err.Error())
+				return err
 			}
 		}
 	}
 
 	// Delete the Controller Pods next
-	cPods, err := k.getControllerPods(vsm, volProProfile, pOps)
+	cPods, err := k.getControllerPods(vsm, pOps)
 	if err != nil {
-		glog.Warning(err.Error())
-	} else {
+		return err
+	}
+
+	if cPods != nil && len(cPods.Items) > 0 {
+		hasAtleastOneVSMObj = true
 		for _, cPod := range cPods.Items {
 			err = pOps.Delete(cPod.Name, &k8sApiV1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				glog.Warning(err.Error())
+				return err
 			}
 		}
 	}
 
-	// Delete the Service at last
-	err = k.deleteService(vsm+string(v1.ControllerSuffix)+string(v1.ServiceSuffix), volProProfile)
+	// Delete the Controller Services at last
+	cSvcs, err := k.getControllerServices(vsm, sOps)
 	if err != nil {
-		glog.Warning(err.Error())
+		return err
+	}
+
+	if cSvcs != nil && len(cSvcs.Items) > 0 {
+		hasAtleastOneVSMObj = true
+		for _, cSvc := range cSvcs.Items {
+			err = sOps.Delete(cSvc.Name, &k8sApiV1.DeleteOptions{
+				OrphanDependents: &orphanDependents,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !hasAtleastOneVSMObj {
+		return fmt.Errorf("VSM '%s' not found", vsm)
 	}
 
 	return nil
@@ -327,20 +380,64 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 		vsm = v
 	}
 
+	k8sUtl := k8sOrchUtil(k, volProProfile)
+
+	kc, supported := k8sUtl.K8sClient()
+	if !supported {
+		return nil, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+	}
+
+	// fetch k8s Deployment operator
+	dOps, err := kc.DeploymentOps()
+	if err != nil {
+		return nil, err
+	}
+
+	// fetch k8s Service operator
+	sOps, err := kc.Services()
+	if err != nil {
+		return nil, err
+	}
+
+	lOpts := k8sApiV1.ListOptions{
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm,
+	}
+
+	dl, err := dOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	if dl == nil {
+		ns, _ := kc.NS()
+		return nil, fmt.Errorf("No deployments were found for vsm '%s: %s'", ns, vsm)
+	}
+
 	annotations := map[string]string{}
 
-	// deployment(s) related details
-	err := k.readFromDeployments(vsm, volProProfile, annotations)
-	if err != nil {
-		return nil, err
+	for _, deploy := range dl.Items {
+		// Properties from controller Deployment
+		if deploy.Name == vsm+string(v1.ControllerSuffix) {
+			SetCtrlDeployConditions(deploy, annotations)
+		}
+		// Properties from replica Deployment
+		if deploy.Name == vsm+string(v1.ReplicaSuffix) {
+			SetReplDeployConditions(deploy, annotations)
+			SetReplIPs(deploy, annotations)
+			SetReplCount(deploy, annotations)
+			SetReplVolumeSize(deploy, annotations)
+			SetIQN(vsm, deploy, annotations)
+		}
 	}
 
-	// service related details
-	err = k.readFromService(vsm, volProProfile, annotations)
-	if err != nil {
-		return nil, err
-	}
+	svc, err := sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
 
+	SetServiceStatus(svc, annotations)
+	SetISCSITargetPortal(svc, annotations)
+
+	// TODO
+	// This is a temporary type that is used
+	// Will move to VSM type
 	pv := &v1.PersistentVolume{}
 	pv.Name = vsm
 	pv.Annotations = annotations
@@ -454,6 +551,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 			Labels: map[string]string{
 				string(v1.VSMSelectorKey):               vsm,
 				string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
+				string(v1.ControllerSelectorKey):        string(v1.JivaControllerSelectorValue),
 			},
 		},
 		TypeMeta: k8sUnversioned.TypeMeta{
@@ -461,11 +559,11 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 			APIVersion: string(v1.K8sDeploymentVersion),
 		},
 		Spec: k8sApisExtnsBeta1.DeploymentSpec{
-			//Replicas: &int32(1),
 			Template: k8sApiV1.PodTemplateSpec{
 				ObjectMeta: k8sApiV1.ObjectMeta{
 					Labels: map[string]string{
-						string(v1.ControllerSelectorKey): vsm + string(v1.ControllerSuffix),
+						string(v1.VSMSelectorKey):        vsm,
+						string(v1.ControllerSelectorKey): string(v1.JivaControllerSelectorValue),
 					},
 				},
 				Spec: k8sApiV1.PodSpec{
@@ -501,9 +599,9 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 	return dd, nil
 }
 
-// createDeploymentReplicas creates one or more persistent volume deployment
+// createReplicaDeployment creates one or more persistent volume deployment
 // replica(s) in Kubernetes
-func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.VolumeProvisionerProfile, clusterIP string) (*k8sApisExtnsBeta1.Deployment, error) {
+func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.VolumeProvisionerProfile, clusterIP string) (*k8sApisExtnsBeta1.Deployment, error) {
 	// fetch VSM name
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
@@ -572,6 +670,7 @@ func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.Volu
 			Labels: map[string]string{
 				string(v1.VSMSelectorKey):               vsm,
 				string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
+				string(v1.ReplicaSelectorKey):           string(v1.JivaReplicaSelectorValue),
 			},
 		},
 		TypeMeta: k8sUnversioned.TypeMeta{
@@ -583,7 +682,8 @@ func (k *k8sOrchestrator) createDeploymentReplicas(volProProfile volProfile.Volu
 			Template: k8sApiV1.PodTemplateSpec{
 				ObjectMeta: k8sApiV1.ObjectMeta{
 					Labels: map[string]string{
-						string(v1.ReplicaSelectorKey): vsm + string(v1.ReplicaSuffix),
+						string(v1.VSMSelectorKey):     vsm,
+						string(v1.ReplicaSelectorKey): string(v1.JivaReplicaSelectorValue),
 					},
 				},
 				Spec: k8sApiV1.PodSpec{
@@ -673,6 +773,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svc.Labels = map[string]string{
 		string(v1.VSMSelectorKey):               vsm,
 		string(v1.VolumeProvisionerSelectorKey): string(v1.JivaVolumeProvisionerSelectorValue),
+		string(v1.ServiceSelectorKey):           string(v1.JivaServiceSelectorValue),
 	}
 
 	iscsiPort := k8sApiV1.ServicePort{}
@@ -687,7 +788,9 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	svcSpec.Ports = []k8sApiV1.ServicePort{iscsiPort, apiPort}
 	// Set the selector that identifies the controller VSM
 	svcSpec.Selector = map[string]string{
-		string(v1.ControllerSelectorKey): vsm + string(v1.ControllerSuffix),
+		string(v1.VSMSelectorKey):        vsm,
+		string(v1.ControllerSelectorKey): string(v1.JivaControllerSelectorValue),
+		//string(v1.ControllerSelectorKey): vsm + string(v1.ControllerSuffix),
 	}
 
 	// Set the service spec
@@ -708,39 +811,30 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 // getControllerServiceDetails fetches the service name & service IP address
 // associated with the VSM
 func (k *k8sOrchestrator) getControllerServiceDetails(volProProfile volProfile.VolumeProvisionerProfile) (string, string, error) {
-	svc, err := k.getControllerService("", volProProfile)
+	vsm, err := volProProfile.VSMName()
 	if err != nil {
 		return "", "", err
-	}
-
-	return svc.Name, svc.Spec.ClusterIP, nil
-}
-
-// getControllerService fetches the service associated with the provided VSM
-func (k *k8sOrchestrator) getControllerService(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApiV1.Service, error) {
-	// fetch VSM if not provided
-	if vsm == "" {
-		v, err := volProProfile.VSMName()
-		if err != nil {
-			return nil, err
-		}
-		vsm = v
 	}
 
 	k8sUtl := k8sOrchUtil(k, volProProfile)
 
 	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return nil, fmt.Errorf("K8s client is not supported by '%s'", k8sUtl.Name())
+		return "", "", fmt.Errorf("K8s client is not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s service operations
 	sOps, err := kc.Services()
 	if err != nil {
-		return nil, err
+		return "", "", err
 	}
 
-	return sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+	svc, err := sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+	if err != nil {
+		return "", "", err
+	}
+
+	return svc.Name, svc.Spec.ClusterIP, nil
 }
 
 // deleteService deletes the service associated with the provided VSM
@@ -765,11 +859,64 @@ func (k *k8sOrchestrator) deleteService(name string, volProProfile volProfile.Vo
 	return sOps.Delete(name, &k8sApiV1.DeleteOptions{})
 }
 
-// getControllerPods fetches the Controller Pod
-func (k *k8sOrchestrator) getControllerPods(vsm string, volProProfile volProfile.VolumeProvisionerProfile, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
+// getControllerServices fetches the Controller Services
+func (k *k8sOrchestrator) getControllerServices(vsm string, serviceOps k8sCoreV1.ServiceInterface) (*k8sApiV1.ServiceList, error) {
+	// filter the VSM Controller Services(s)
+	lOpts := k8sApiV1.ListOptions{
+		// A list of comma separated key=value filters will filter the
+		// VSM Controller Service(s)
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ServiceSelectorKeyEquals) + string(v1.JivaServiceSelectorValue),
+	}
+
+	sl, err := serviceOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return sl, nil
+}
+
+// getControllerDeploys fetches the Controller Deployments
+func (k *k8sOrchestrator) getControllerDeploys(vsm string, deployOps k8sExtnsV1Beta1.DeploymentInterface) (*k8sApisExtnsBeta1.DeploymentList, error) {
+	// filter the VSM Controller Deployment(s)
+	lOpts := k8sApiV1.ListOptions{
+		// A list of comma separated key=value filters will filter the
+		// VSM Controller Deployment(s)
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ControllerSelectorKeyEquals) + string(v1.JivaControllerSelectorValue),
+	}
+
+	dl, err := deployOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return dl, nil
+}
+
+// getReplicaDeploys fetches the Replica Deployments
+func (k *k8sOrchestrator) getReplicaDeploys(vsm string, deployOps k8sExtnsV1Beta1.DeploymentInterface) (*k8sApisExtnsBeta1.DeploymentList, error) {
+	// filter the VSM Replica Deployment(s)
+	lOpts := k8sApiV1.ListOptions{
+		// A list of comma separated key=value filters will filter the
+		// VSM Replica Deployment(s)
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ReplicaSelectorKeyEquals) + string(v1.JivaReplicaSelectorValue),
+	}
+
+	dl, err := deployOps.List(lOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	return dl, nil
+}
+
+// getControllerPods fetches the Controller Pods
+func (k *k8sOrchestrator) getControllerPods(vsm string, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
 	// filter the VSM Controller Pod(s)
 	pOpts := k8sApiV1.ListOptions{
-		LabelSelector: string(v1.ControllerSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ControllerSuffix),
+		// A list of comma separated key=value filters will filter the
+		// VSM Controller Pod(s)
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ControllerSelectorKeyEquals) + string(v1.JivaControllerSelectorValue),
 	}
 
 	cp, err := podOps.List(pOpts)
@@ -780,11 +927,13 @@ func (k *k8sOrchestrator) getControllerPods(vsm string, volProProfile volProfile
 	return cp, nil
 }
 
-// getReplicaPods fetches the Replica Pod
-func (k *k8sOrchestrator) getReplicaPods(vsm string, volProProfile volProfile.VolumeProvisionerProfile, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
+// getReplicaPods fetches the Replica Pods
+func (k *k8sOrchestrator) getReplicaPods(vsm string, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
 	// filter the VSM Replica Pod(s)
 	pOpts := k8sApiV1.ListOptions{
-		LabelSelector: string(v1.ReplicaSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ReplicaSuffix),
+		// A list of comma separated key=value filters will filter the
+		// VSM Replica Pod(s)
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ReplicaSelectorKeyEquals) + string(v1.JivaReplicaSelectorValue),
 	}
 
 	rp, err := podOps.List(pOpts)
@@ -815,12 +964,12 @@ func (k *k8sOrchestrator) getPods(vsm string, volProProfile volProfile.VolumePro
 		return nil, err
 	}
 
-	rps, err := k.getReplicaPods(vsm, volProProfile, pOps)
+	rps, err := k.getReplicaPods(vsm, pOps)
 	if err != nil {
 		return nil, err
 	}
 
-	cps, err := k.getControllerPods(vsm, volProProfile, pOps)
+	cps, err := k.getControllerPods(vsm, pOps)
 	if err != nil {
 		return nil, err
 	}
@@ -856,69 +1005,6 @@ func (k *k8sOrchestrator) getDeployment(deployName string, volProProfile volProf
 	return dOps.Get(deployName)
 }
 
-// TODO
-// To be deprecated to a standard VSM type !!
-//
-// Transform a VSM to a PersistentVolume
-func (k *k8sOrchestrator) readFromDeployments(vsm string, volProProfile volProfile.VolumeProvisionerProfile, annotations map[string]string) error {
-	// fetch VSM if not provided
-	if vsm == "" {
-		v, err := volProProfile.VSMName()
-		if err != nil {
-			return err
-		}
-		vsm = v
-	}
-
-	dl, err := k.getDeploymentList(vsm, volProProfile)
-	if err != nil {
-		return err
-	}
-
-	if dl == nil {
-		return fmt.Errorf("No deployments were found for vsm 'name: %s'", vsm)
-	}
-
-	for _, deploy := range dl.Items {
-		// w.r.t controller
-		if deploy.Name == vsm+string(v1.ControllerSuffix) {
-			SetCtrlDeployConditions(deploy, annotations)
-		}
-		// w.r.t replica
-		if deploy.Name == vsm+string(v1.ReplicaSuffix) {
-			SetReplDeployConditions(deploy, annotations)
-			SetReplIPs(deploy, annotations)
-			SetReplCount(deploy, annotations)
-			SetReplVolumeSize(deploy, annotations)
-			SetIQN(vsm, deploy, annotations)
-		}
-	}
-
-	return nil
-}
-
-func (k *k8sOrchestrator) readFromService(vsm string, volProProfile volProfile.VolumeProvisionerProfile, annotations map[string]string) error {
-	// fetch VSM if not provided
-	if vsm == "" {
-		v, err := volProProfile.VSMName()
-		if err != nil {
-			return err
-		}
-		vsm = v
-	}
-
-	// w.r.t service
-	svc, err := k.getControllerService(vsm, volProProfile)
-	if err != nil {
-		return err
-	}
-
-	SetServiceStatus(svc, annotations)
-	SetISCSITargetPortal(svc, annotations)
-
-	return nil
-}
-
 // getDeploymentList fetches the deployments associated with the provided VSM name
 func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*k8sApisExtnsBeta1.DeploymentList, error) {
 	// fetch VSM if not provided
@@ -947,11 +1033,8 @@ func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile
 		return nil, err
 	}
 
-	// TODO
-	// This filtering logic DOES NOT WORK with client-go v2.0.0
-	// Need to upgrade client-go to latest stable version for this to work
 	lOpts := k8sApiV1.ListOptions{
-		LabelSelector: string(v1.VSMSelectorPrefix) + vsm,
+		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm,
 	}
 
 	deployList, err := dOps.List(lOpts)
@@ -964,31 +1047,6 @@ func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile
 	}
 
 	return deployList, nil
-
-	// NOTE:
-	//    Workaround for above filtering logic that does not work
-	// Get the filtered pod list based on expected label
-	//eLblStr := string(v1.VSMSelectorPrefix) + vsm
-	//eLbl, err := labels.Parse(eLblStr)
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	// filtered deployment list
-	// I believe above filtering does not work
-	//fdl := &k8sApisExtnsBeta1.DeploymentList{}
-
-	//for _, item := range deployList.Items {
-	//	if eLbl.Matches(labels.Set(item.Labels)) {
-	//		fdl.Items = append(fdl.Items, item)
-	//	}
-	//}
-
-	//if fdl == nil || len(fdl.Items) == 0 {
-	//	return nil, fmt.Errorf("VSM(s) '%s:%s' not found at orchestrator '%s:%s'", ns, vsm, k.Label(), k.Name())
-	//}
-
-	//return fdl, nil
 }
 
 // getVSMDeployments fetches all the VSM deployments

@@ -215,8 +215,23 @@ const (
 	// ControllerSelectorKey is used to filter controllers
 	ControllerSelectorKey GenericAnnotations = "openebs/controller"
 
+	// ControllerSelectorKeyEquals is used to filter controller when
+	// selector logic is used
+	ControllerSelectorKeyEquals GenericAnnotations = ControllerSelectorKey + "="
+
 	// ReplicaSelectorKey is used to filter replicas
 	ReplicaSelectorKey GenericAnnotations = "openebs/replica"
+
+	// ReplicaSelectorKeyEquals is used to filter replica when
+	// selector logic is used
+	ReplicaSelectorKeyEquals GenericAnnotations = ReplicaSelectorKey + "="
+
+	// ServiceSelectorKey is used to filter services
+	ServiceSelectorKey GenericAnnotations = "openebs/controller-service"
+
+	// ServiceSelectorKeyEquals is used to filter services when selector logic is
+	// used
+	ServiceSelectorKeyEquals GenericAnnotations = ServiceSelectorKey + "="
 
 	// SelectorEquals is used to filter
 	SelectorEquals GenericAnnotations = "="
@@ -224,9 +239,8 @@ const (
 	// VSMSelectorKey is used to filter vsm
 	VSMSelectorKey GenericAnnotations = "vsm"
 
-	// VSMSelectorPrefix is used to filter vsm by name when
-	// selector logic is used
-	VSMSelectorPrefix GenericAnnotations = VSMSelectorKey + "="
+	// VSMSelectorKeyEquals is used to filter vsm when selector logic is used
+	VSMSelectorKeyEquals GenericAnnotations = VSMSelectorKey + "="
 
 	// ControllerSuffix is used as a suffix for controller related names
 	ControllerSuffix GenericAnnotations = "-ctrl"
@@ -257,6 +271,15 @@ type JivaAnnotations string
 const (
 	// JivaVolumeProvisionerSelectorValue is used to filter jiva based objects
 	JivaVolumeProvisionerSelectorValue JivaAnnotations = "jiva"
+
+	// JivaControllerSelectorValue is used to filter jiva controller objects
+	JivaControllerSelectorValue JivaAnnotations = "jiva-controller"
+
+	// JivaReplicaSelectorValue is used to filter jiva replica objects
+	JivaReplicaSelectorValue JivaAnnotations = "jiva-replica"
+
+	// JivaServiceSelectorValue is used to filter jiva service objects
+	JivaServiceSelectorValue JivaAnnotations = "jiva-controller-service"
 
 	// PortNameISCSI is the name given to iscsi ports
 	PortNameISCSI JivaAnnotations = "iscsi"

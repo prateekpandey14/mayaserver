@@ -1558,7 +1558,7 @@ func TestCreateControllerServiceReturnsOk(t *testing.T) {
 	}
 
 	// Verify the service labels
-	eLblStr := string(v1.VSMSelectorPrefix) + vsm
+	eLblStr := string(v1.VSMSelectorKeyEquals) + vsm
 	eLbl, _ := labels.Parse(eLblStr)
 	if !eLbl.Matches(labels.Set(svc.Labels)) {
 		t.Errorf("TestCase: Labels Match \n\tExpectedLabels: '%s' \n\tActualLabels: '%s'", eLbl, labels.Set(svc.Labels))
@@ -1570,7 +1570,7 @@ func TestCreateControllerServiceReturnsOk(t *testing.T) {
 	}
 
 	// Verify the service spec labels
-	eSelectorStr := string(v1.ControllerSelectorKey) + string(v1.SelectorEquals) + vsm + string(v1.ControllerSuffix)
+	eSelectorStr := string(v1.ControllerSelectorKeyEquals) + string(v1.JivaControllerSelectorValue) + "," + string(v1.VSMSelectorKeyEquals) + vsm
 	eSelector, _ := labels.Parse(eSelectorStr)
 	if !eSelector.Matches(labels.Set(svc.Spec.Selector)) {
 		t.Errorf("TestCase: Selector Match \n\tExpectedSelector: '%s' \n\tActualSelector: '%s'", eSelector, labels.Set(svc.Spec.Selector))
@@ -1693,7 +1693,7 @@ func TestCreateDeploymentReplicasReturnsErrVsmName(t *testing.T) {
 		k8sOrchestrator: k8sOrchestrator{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(&errVsmNameVolumeProfile{}, "")
+	_, err := mockedO.createReplicaDeployment(&errVsmNameVolumeProfile{}, "")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1714,7 +1714,7 @@ func TestCreateDeploymentReplicasReturnsNoSupportReplicaImage(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1738,7 +1738,7 @@ func TestCreateDeploymentReplicasReturnsErrReplicaImage(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1759,7 +1759,7 @@ func TestCreateDeploymentReplicasReturnsErrReplicaCount(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1780,7 +1780,7 @@ func TestCreateDeploymentReplicasReturnsErrPersistentPathCount(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1801,7 +1801,7 @@ func TestCreateDeploymentReplicasReturnsErrCountMatch(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 	if err == nil {
 		t.Errorf("TestCase: Error Match \n\tExpectedErr: 'not-nil' \n\tActualErr: 'nil'")
 	}
@@ -1825,7 +1825,7 @@ func TestCreateDeploymentReplicasReturnsOk(t *testing.T) {
 		&okVsmNameVolumeProfile{},
 	}
 
-	_, err := mockedO.createDeploymentReplicas(volProfile, "1.1.1.1")
+	_, err := mockedO.createReplicaDeployment(volProfile, "1.1.1.1")
 
 	if err != nil {
 		t.Errorf("TestCase: Nil Error Match \n\tExpectedErr: 'nil' \n\tActualErr: '%s'", err.Error())
