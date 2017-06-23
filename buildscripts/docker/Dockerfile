@@ -11,6 +11,7 @@ FROM ubuntu:16.04
 # TODO: The following env variables should be auto detected. 
 ENV MAYA_API_SERVER_VERSION="0.2-RC4" \
     MAYA_API_SERVER_NETWORK="eth0" \
+    TERM="vt100" \
     NOMAD_ADDR="http://172.28.128.3:4646" \
     NOMAD_CN_TYPE="host" \
     NOMAD_CN_NETWORK_CIDR="172.28.128.1/24" \
