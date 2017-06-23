@@ -199,7 +199,14 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, err
 	}
 
-	return k.ReadStorage(volProProfile)
+	// TODO
+	// This is a temporary type that is used
+	// Will move to VSM type
+	pv := &v1.PersistentVolume{}
+	vsm, _ := volProProfile.VSMName()
+	pv.Name = vsm
+
+	return pv, nil
 }
 
 // DeleteStorage will remove the VSM. The logic is built in such a way that
@@ -214,6 +221,7 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 // out requires calling delete function.
 func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) error {
 	// Assume the presence of atleast one VSM object
+	// Set this flag to false initially
 	var hasAtleastOneVSMObj bool
 
 	if volProProfile == nil {
@@ -357,21 +365,21 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 // ReadStorage will fetch information about the persistent volume
 //func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
 func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
-	if volProProfile == nil {
-		return nil, fmt.Errorf("Nil volume provisioner profile provided")
-	}
-
 	// volProProfile is expected to have the VSM name
 	return k.readVSM("", volProProfile)
 }
 
 // readVSM will fetch information about a VSM
 func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
+	// flag to check if VSM has all its dependents created
+	// set it to true initially
+	hasAllDependents := true
+
 	if volProProfile == nil {
 		return nil, fmt.Errorf("Nil volume provisioner profile provided")
 	}
 
-	// fetch VSM if not provided
+	// fetch VSM from volume provisioner profile if not provided explicitly
 	if vsm == "" {
 		v, err := volProProfile.VSMName()
 		if err != nil {
@@ -399,41 +407,89 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 		return nil, err
 	}
 
-	lOpts := k8sApiV1.ListOptions{
-		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm,
-	}
-
-	dl, err := dOps.List(lOpts)
+	// fetch k8s Pod operator
+	pOps, err := kc.Pods()
 	if err != nil {
 		return nil, err
 	}
 
-	if dl == nil {
-		ns, _ := kc.NS()
-		return nil, fmt.Errorf("No deployments were found for vsm '%s: %s'", ns, vsm)
+	ns, err := kc.NS()
+	if err != nil {
+		return nil, err
 	}
 
 	annotations := map[string]string{}
 
-	for _, deploy := range dl.Items {
-		// Properties from controller Deployment
-		if deploy.Name == vsm+string(v1.ControllerSuffix) {
-			SetCtrlDeployConditions(deploy, annotations)
-		}
-		// Properties from replica Deployment
-		if deploy.Name == vsm+string(v1.ReplicaSuffix) {
-			SetReplDeployConditions(deploy, annotations)
-			SetReplIPs(deploy, annotations)
-			SetReplCount(deploy, annotations)
-			SetReplVolumeSize(deploy, annotations)
-			SetIQN(vsm, deploy, annotations)
-		}
+	// Extract from Replica Deployments
+	rDeploys, err := k.getReplicaDeploys(vsm, dOps)
+	if err != nil {
+		return nil, err
 	}
 
-	svc, err := sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+	if rDeploys != nil && len(rDeploys.Items) > 0 {
+		for _, rd := range rDeploys.Items {
+			SetReplicaCount(rd, annotations)
+			SetReplicaVolSize(rd, annotations)
+		}
+	} else {
+		hasAllDependents = false
+		glog.Warningf("VSM '%s: %s' has no Replica Deployment(s)", ns, vsm)
+	}
 
-	SetServiceStatus(svc, annotations)
-	SetISCSITargetPortal(svc, annotations)
+	// Extract from Controller Pods
+	cPods, err := k.getControllerPods(vsm, pOps)
+	if err != nil {
+		return nil, err
+	}
+
+	if cPods != nil && len(cPods.Items) > 0 {
+		for _, cp := range cPods.Items {
+			SetControllerIPs(cp, annotations)
+			SetControllerStatuses(cp, annotations)
+		}
+	} else {
+		hasAllDependents = false
+		glog.Warningf("VSM '%s: %s' has no Controller Pod(s)", ns, vsm)
+	}
+
+	// Extract from Replica Pods
+	rPods, err := k.getReplicaPods(vsm, pOps)
+	if err != nil {
+		return nil, err
+	}
+
+	if rPods != nil && len(rPods.Items) > 0 {
+		for _, rp := range rPods.Items {
+			SetReplicaIPs(rp, annotations)
+			SetReplicaStatuses(rp, annotations)
+		}
+	} else {
+		hasAllDependents = false
+		glog.Warningf("VSM '%s: %s' has no Replica Pod(s)", ns, vsm)
+	}
+
+	// Extract from Controller Services
+	cSvcs, err := k.getControllerServices(vsm, sOps)
+	if err != nil {
+		return nil, err
+	}
+
+	if cSvcs != nil && len(cSvcs.Items) > 0 {
+		for _, cSvc := range cSvcs.Items {
+			SetISCSITargetPortals(cSvc, annotations)
+			SetServiceStatuses(cSvc, annotations)
+			SetControllerClusterIPs(cSvc, annotations)
+		}
+	} else {
+		hasAllDependents = false
+		glog.Warningf("VSM '%s: %s' has no Controller Service(s)", ns, vsm)
+	}
+
+	if !hasAllDependents {
+		return nil, fmt.Errorf("VSM '%s: %s' not found", ns, vsm)
+	}
+
+	SetIQN(vsm, annotations)
 
 	// TODO
 	// This is a temporary type that is used
@@ -479,7 +535,9 @@ func (k *k8sOrchestrator) ListStorage(volProProfile volProfile.VolumeProvisioner
 
 		pv, err := k.readVSM(vsm, volProProfile)
 		if err != nil {
-			return nil, err
+			// Ignore the error of this particular VSM
+			// Cases where this particular VSM might be in a creating or deleting state
+			continue
 		}
 		pvl.Items = append(pvl.Items, *pv)
 	}
@@ -543,7 +601,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 		return nil, err
 	}
 
-	glog.Infof("Adding vsm controller for vsm 'name: %s'", vsm)
+	glog.Infof("Adding controller for VSM 'name: %s'", vsm)
 
 	deploy := &k8sApisExtnsBeta1.Deployment{
 		ObjectMeta: k8sApiV1.ObjectMeta{
@@ -594,7 +652,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 		return nil, err
 	}
 
-	glog.Infof("Added vsm controller for vsm 'name: %s' as K8s 'kind: %s' 'apiversion: %s'", deploy.Name, deploy.Kind, deploy.APIVersion)
+	glog.Infof("Added controller 'name: %s'", deploy.Name)
 
 	return dd, nil
 }
@@ -662,7 +720,7 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 		return nil, err
 	}
 
-	glog.Infof("Adding vsm replica(s) for vsm 'name: %s'", vsm)
+	glog.Infof("Adding replica(s) for VSM 'name: %s'", vsm)
 
 	deploy := &k8sApisExtnsBeta1.Deployment{
 		ObjectMeta: k8sApiV1.ObjectMeta{
@@ -732,7 +790,7 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 		return nil, err
 	}
 
-	glog.Infof("Added vsm replica(s) 'count: %d' for vsm 'name: %s' as K8s 'kind: %s' 'apiversion: %s'", deploy.Spec.Replicas, deploy.Name, deploy.Kind, deploy.APIVersion)
+	glog.Infof("Added replica(s) 'count: %s' 'name: %s'", fmt.Sprint(*deploy.Spec.Replicas), deploy.Name)
 
 	return dd, nil
 }
@@ -761,7 +819,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 
 	// TODO
 	// log levels & logging context to be taken care of
-	glog.Infof("Adding service 'vsm controller: %s'", vsm)
+	glog.Infof("Adding service for VSM 'name : %s'", vsm)
 
 	// TODO
 	// Code this like a golang struct template
@@ -802,7 +860,7 @@ func (k *k8sOrchestrator) createControllerService(volProProfile volProfile.Volum
 	// TODO
 	// log levels & logging context to be taken care of
 	if err == nil {
-		glog.Infof("Service added 'vsm controller: %s' 'apiversion: %s'", vsm, svc.APIVersion)
+		glog.Infof("Added service 'name: %s'", svc.Name)
 	}
 
 	return ssvc, err

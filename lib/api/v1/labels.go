@@ -123,6 +123,28 @@ const (
 	PVPPersistentPathLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistent-path"
 )
 
+type MayaAPIServiceOutputLabel string
+
+const (
+	ReplicaStatusAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/replica-status"
+
+	ControllerStatusAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/controller-status"
+
+	TargetPortalsAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/targetportals"
+
+	ClusterIPsAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/cluster-ips"
+
+	ReplicaIPsAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/replica-ips"
+
+	ControllerIPsAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/controller-ips"
+
+	IQNAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/iqn"
+
+	VolumeSizeAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/volume-size"
+
+	ReplicaCountAPILbl MayaAPIServiceOutputLabel = "vsm.openebs.io/replica-count"
+)
+
 // VolumeProvsionerDefaults is a typed label to provide default values w.r.t
 // volume provisioner properties.
 type VolumeProvisionerDefaults string
@@ -305,7 +327,7 @@ const (
 	JivaVolumeNameHolder JivaAnnotations = "__VOLUME_NAME__"
 )
 
-// JivaDefaults is a typed label to provide default values to Jiva based
+// JivaDefaults is a typed label to provide DEFAULT values to Jiva based
 // persistent volume properties
 type JivaDefaults string
 
@@ -316,10 +338,6 @@ const (
 
 	// Jiva's iSCSI Qualified IQN value.
 	JivaIqnFormatPrefix JivaDefaults = "iqn.2016-09.com.openebs.jiva"
-
-	// JivaVolumeNameDef is used to provide default name for jiva
-	// based persistent volumes
-	//JivaVolumeNameDef JivaDefaults = "jvol"
 
 	// JivaISCSIPortDef is used to provide default iscsi port value for jiva
 	// based persistent volumes

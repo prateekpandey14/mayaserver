@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
 	orchProfile "github.com/openebs/mayaserver/lib/profile/orchprovider"
@@ -249,36 +250,132 @@ func (k *k8sUtil) outClusterCS() (*kubernetes.Clientset, error) {
 	return nil, fmt.Errorf("outClusterCS not supported in '%s'", k.Name())
 }
 
-func SetCtrlDeployConditions(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
+//
+func SetControllerIPs(cp k8sApiV1.Pod, annotations map[string]string) {
+	current := strings.TrimSpace(cp.Status.PodIP)
+	if current == "" {
+		// Nothing to be done
+		return
+	}
 
-func SetReplDeployConditions(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
+	existing := strings.TrimSpace(annotations[string(v1.ControllerIPsAPILbl)])
 
-func SetReplIPs(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {}
-
-func SetReplCount(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
-	annotations["be.jiva.volume.openebs.io/count"] = fmt.Sprint(*deploy.Spec.Replicas)
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.ControllerIPsAPILbl)] = current
+	} else {
+		annotations[string(v1.ControllerIPsAPILbl)] = existing + "," + current
+	}
 }
 
-func SetReplVolumeSize(deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+//
+func SetReplicaIPs(rp k8sApiV1.Pod, annotations map[string]string) {
+	current := strings.TrimSpace(rp.Status.PodIP)
+	if current == "" {
+		// Nothing to be done
+		return
+	}
+
+	existing := strings.TrimSpace(annotations[string(v1.ReplicaIPsAPILbl)])
+
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.ReplicaIPsAPILbl)] = current
+	} else {
+		annotations[string(v1.ReplicaIPsAPILbl)] = existing + "," + current
+	}
+}
+
+//
+func SetControllerStatuses(cp k8sApiV1.Pod, annotations map[string]string) {
+	current := strings.TrimSpace(string(cp.Status.Phase))
+	if current == "" {
+		// Nothing to be done
+		return
+	}
+
+	existing := strings.TrimSpace(annotations[string(v1.ControllerStatusAPILbl)])
+
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.ControllerStatusAPILbl)] = current
+	} else {
+		annotations[string(v1.ControllerStatusAPILbl)] = existing + "," + current
+	}
+}
+
+//
+func SetReplicaStatuses(rp k8sApiV1.Pod, annotations map[string]string) {
+	current := strings.TrimSpace(string(rp.Status.Phase))
+	if current == "" {
+		// Nothing to be done
+		return
+	}
+
+	existing := strings.TrimSpace(annotations[string(v1.ReplicaStatusAPILbl)])
+
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.ReplicaStatusAPILbl)] = current
+	} else {
+		annotations[string(v1.ReplicaStatusAPILbl)] = existing + "," + current
+	}
+}
+
+// TODO
+// Not sure !!
+func SetServiceStatuses(svc k8sApiV1.Service, annotations map[string]string) {}
+
+func SetReplicaCount(rd k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	annotations[string(v1.ReplicaCountAPILbl)] = fmt.Sprint(*rd.Spec.Replicas)
+}
+
+// TODO Get it from Pod
+func SetReplicaVolSize(rd k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
 	// TODO
 	// Set the size as labels in replica deployment & extract from the label
 	// Current way of extraction is a very crude way !!
-	con := deploy.Spec.Template.Spec.Containers[0]
+	con := rd.Spec.Template.Spec.Containers[0]
 	size := con.Args[len(con.Args)-2]
 
-	annotations["be.jiva.volume.openebs.io/vol-size"] = size
+	annotations[string(v1.VolumeSizeAPILbl)] = size
 }
 
-func SetIQN(vsm string, deploy k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
-	annotations["iqn"] = string(v1.JivaIqnFormatPrefix) + ":" + vsm
+func SetIQN(vsm string, annotations map[string]string) {
+	annotations[string(v1.IQNAPILbl)] = string(v1.JivaIqnFormatPrefix) + ":" + vsm
 }
 
-func SetServiceIP(svc *k8sApiV1.Service, annotations map[string]string) {
-	annotations["fe.jiva.volume.openebs.io/ip"] = svc.Spec.ClusterIP
+func SetControllerClusterIPs(svc k8sApiV1.Service, annotations map[string]string) {
+	current := strings.TrimSpace(svc.Spec.ClusterIP)
+	if current == "" {
+		// Nothing to be done
+		return
+	}
+
+	existing := strings.TrimSpace(annotations[string(v1.ClusterIPsAPILbl)])
+
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.ClusterIPsAPILbl)] = current
+	} else {
+		annotations[string(v1.ClusterIPsAPILbl)] = existing + "," + current
+	}
 }
 
-func SetServiceStatus(svc *k8sApiV1.Service, annotations map[string]string) {}
+func SetISCSITargetPortals(svc k8sApiV1.Service, annotations map[string]string) {
+	current := strings.TrimSpace(svc.Spec.ClusterIP)
+	if current == "" {
+		// Nothing to be done
+		return
+	}
+	current = current + ":" + string(v1.JivaISCSIPortDef)
 
-func SetISCSITargetPortal(svc *k8sApiV1.Service, annotations map[string]string) {
-	annotations["targetportal"] = svc.Spec.ClusterIP + ":3260"
+	existing := strings.TrimSpace(annotations[string(v1.TargetPortalsAPILbl)])
+
+	// Set the value or add to the existing values if not added earlier
+	if existing == "" {
+		annotations[string(v1.TargetPortalsAPILbl)] = current
+	} else {
+		annotations[string(v1.TargetPortalsAPILbl)] = existing + "," + current
+	}
 }

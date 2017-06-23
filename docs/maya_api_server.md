@@ -137,17 +137,13 @@ curl -k -H "Content-Type: application/yaml" \
   http://10.44.0.1:5656/latest/volumes/
 ```
 
+- One get the VSM `name` echoed back !!
+
 ```json
 {
   "metadata": {
-    "annotations": {
-      "be.jiva.volume.openebs.io\/count": "2",
-      "be.jiva.volume.openebs.io\/vol-size": "1G",
-      "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
-      "targetportal": "10.96.17.42:3260"
-    },
     "creationTimestamp": null,
-    "name": "my-jiva-vsm"
+    "name": "my-2-jiva-vsm"
   },
   "spec": {
     "AccessModes": null,
@@ -181,10 +177,15 @@ curl http://10.44.0.1:5656/latest/volumes/info/my-jiva-vsm
 {
   "metadata": {
     "annotations": {
-      "be.jiva.volume.openebs.io\/vol-size": "1G",
-      "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
-      "targetportal": "10.96.17.42:3260",
-      "be.jiva.volume.openebs.io\/count": "2"
+      "vsm.openebs.io\/controller-status": "Running",
+      "vsm.openebs.io\/targetportals": "10.103.9.225:3260",
+      "vsm.openebs.io\/cluster-ips": "10.103.9.225",
+      "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
+      "vsm.openebs.io\/replica-count": "2",
+      "vsm.openebs.io\/volume-size": "1G",
+      "vsm.openebs.io\/controller-ips": "10.44.0.2",
+      "vsm.openebs.io\/replica-ips": "10.44.0.3,10.36.0.2",
+      "vsm.openebs.io\/replica-status": "Running,Running"
     },
     "creationTimestamp": null,
     "name": "my-jiva-vsm"
@@ -233,10 +234,47 @@ curl http://10.44.0.1:5656/latest/volumes/
     {
       "metadata": {
         "annotations": {
-          "be.jiva.volume.openebs.io\/count": "1",
-          "be.jiva.volume.openebs.io\/vol-size": "2G",
-          "iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
-          "targetportal": "10.97.96.96:3260"
+          "vsm.openebs.io\/controller-ips": "10.44.0.2",
+          "vsm.openebs.io\/replica-ips": "10.44.0.3,10.36.0.2",
+          "vsm.openebs.io\/cluster-ips": "10.103.9.225",
+          "vsm.openebs.io\/replica-count": "2",
+          "vsm.openebs.io\/volume-size": "1G",
+          "vsm.openebs.io\/targetportals": "10.103.9.225:3260",
+          "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
+          "vsm.openebs.io\/controller-status": "Running",
+          "vsm.openebs.io\/replica-status": "Running,Running"
+        },
+        "creationTimestamp": null,
+        "name": "my-2-jiva-vsm"
+      },
+      "spec": {
+        "AccessModes": null,
+        "Capacity": null,
+        "ClaimRef": null,
+        "OpenEBS": {
+          "volumeID": ""
+        },
+        "PersistentVolumeReclaimPolicy": "",
+        "StorageClassName": ""
+      },
+      "status": {
+        "Message": "",
+        "Phase": "",
+        "Reason": ""
+      }
+    },
+    {
+      "metadata": {
+        "annotations": {
+          "vsm.openebs.io\/volume-size": "2G",
+          "vsm.openebs.io\/controller-status": "Running",
+          "vsm.openebs.io\/replica-ips": "10.44.0.4",
+          "vsm.openebs.io\/targetportals": "10.104.146.117:3260",
+          "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
+          "vsm.openebs.io\/replica-count": "1",
+          "vsm.openebs.io\/controller-ips": "10.36.0.3",
+          "vsm.openebs.io\/replica-status": "Running",
+          "vsm.openebs.io\/cluster-ips": "10.104.146.117"
         },
         "creationTimestamp": null,
         "name": "my-jiva-vsm"
@@ -282,18 +320,20 @@ ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
     "apiVersion": "v1",
     "kind": "Service",
     "metadata": {
-        "creationTimestamp": "2017-06-12T08:54:04Z",
+        "creationTimestamp": "2017-06-23T05:46:32Z",
         "labels": {
+            "openebs/controller-service": "jiva-controller-service",
+            "openebs/volume-provisioner": "jiva",
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-ctrl-svc",
         "namespace": "default",
-        "resourceVersion": "37744",
+        "resourceVersion": "1104777",
         "selfLink": "/api/v1/namespaces/default/services/my-jiva-vsm-ctrl-svc",
-        "uid": "b00293e7-4f4c-11e7-bdb8-021c6f7dbe9d"
+        "uid": "4fc42cc0-57d7-11e7-9009-021c6f7dbe9d"
     },
     "spec": {
-        "clusterIP": "10.96.17.42",
+        "clusterIP": "10.108.220.27",
         "ports": [
             {
                 "name": "iscsi",
@@ -309,7 +349,8 @@ ubuntu@kubemaster-01:~$ kubectl get services/my-jiva-vsm-ctrl-svc -o json
             }
         ],
         "selector": {
-            "vsm": "my-jiva-vsm-ctrl"
+            "openebs/controller": "jiva-controller",
+            "vsm": "my-jiva-vsm"
         },
         "sessionAffinity": "None",
         "type": "ClusterIP"
@@ -339,21 +380,24 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
         "annotations": {
             "deployment.kubernetes.io/revision": "1"
         },
-        "creationTimestamp": "2017-06-12T08:54:04Z",
+        "creationTimestamp": "2017-06-23T05:46:32Z",
         "generation": 1,
         "labels": {
+            "openebs/controller": "jiva-controller",
+            "openebs/volume-provisioner": "jiva",
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-ctrl",
         "namespace": "default",
-        "resourceVersion": "37787",
+        "resourceVersion": "1104834",
         "selfLink": "/apis/extensions/v1beta1/namespaces/default/deployments/my-jiva-vsm-ctrl",
-        "uid": "aff7baef-4f4c-11e7-bdb8-021c6f7dbe9d"
+        "uid": "4fc9bfc7-57d7-11e7-9009-021c6f7dbe9d"
     },
     "spec": {
         "replicas": 1,
         "selector": {
             "matchLabels": {
+                "openebs/controller": "jiva-controller",
                 "vsm": "my-jiva-vsm"
             }
         },
@@ -368,6 +412,7 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
             "metadata": {
                 "creationTimestamp": null,
                 "labels": {
+                    "openebs/controller": "jiva-controller",
                     "vsm": "my-jiva-vsm"
                 }
             },
@@ -378,6 +423,8 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
                             "controller",
                             "--frontend",
                             "gotgt",
+                            "--clusterIP",
+                            "10.108.220.27",
                             "my-jiva-vsm"
                         ],
                         "command": [
@@ -413,8 +460,8 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-ctrl -o json
         "availableReplicas": 1,
         "conditions": [
             {
-                "lastTransitionTime": "2017-06-12T08:54:04Z",
-                "lastUpdateTime": "2017-06-12T08:54:04Z",
+                "lastTransitionTime": "2017-06-23T05:46:32Z",
+                "lastUpdateTime": "2017-06-23T05:46:32Z",
                 "message": "Deployment has minimum availability.",
                 "reason": "MinimumReplicasAvailable",
                 "status": "True",
@@ -441,21 +488,24 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
         "annotations": {
             "deployment.kubernetes.io/revision": "1"
         },
-        "creationTimestamp": "2017-06-12T08:54:04Z",
+        "creationTimestamp": "2017-06-23T05:46:32Z",
         "generation": 1,
         "labels": {
+            "openebs/replica": "jiva-replica",
+            "openebs/volume-provisioner": "jiva",
             "vsm": "my-jiva-vsm"
         },
         "name": "my-jiva-vsm-rep",
         "namespace": "default",
-        "resourceVersion": "37818",
+        "resourceVersion": "1104826",
         "selfLink": "/apis/extensions/v1beta1/namespaces/default/deployments/my-jiva-vsm-rep",
-        "uid": "b00ef31b-4f4c-11e7-bdb8-021c6f7dbe9d"
+        "uid": "4fcc6b4b-57d7-11e7-9009-021c6f7dbe9d"
     },
     "spec": {
-        "replicas": 2,
+        "replicas": 1,
         "selector": {
             "matchLabels": {
+                "openebs/replica": "jiva-replica",
                 "vsm": "my-jiva-vsm"
             }
         },
@@ -470,6 +520,7 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
             "metadata": {
                 "creationTimestamp": null,
                 "labels": {
+                    "openebs/replica": "jiva-replica",
                     "vsm": "my-jiva-vsm"
                 }
             },
@@ -479,9 +530,9 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
                         "args": [
                             "replica",
                             "--frontendIP",
-                            "10.96.17.42",
+                            "10.108.220.27",
                             "--size",
-                            "1G",
+                            "2G",
                             "/openebs"
                         ],
                         "command": [
@@ -523,7 +574,7 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
                 "volumes": [
                     {
                         "hostPath": {
-                            "path": "/tmp/my-jiva-vsm/openebs"
+                            "path": "/var/openebs/my-jiva-vsm/openebs"
                         },
                         "name": "openebs"
                     }
@@ -532,11 +583,11 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
         }
     },
     "status": {
-        "availableReplicas": 2,
+        "availableReplicas": 1,
         "conditions": [
             {
-                "lastTransitionTime": "2017-06-12T08:54:20Z",
-                "lastUpdateTime": "2017-06-12T08:54:20Z",
+                "lastTransitionTime": "2017-06-23T05:46:32Z",
+                "lastUpdateTime": "2017-06-23T05:46:32Z",
                 "message": "Deployment has minimum availability.",
                 "reason": "MinimumReplicasAvailable",
                 "status": "True",
@@ -544,9 +595,9 @@ ubuntu@kubemaster-01:~$ kubectl get deploy/my-jiva-vsm-rep -o json
             }
         ],
         "observedGeneration": 1,
-        "readyReplicas": 2,
-        "replicas": 2,
-        "updatedReplicas": 2
+        "readyReplicas": 1,
+        "replicas": 1,
+        "updatedReplicas": 1
     }
 }
 ```
