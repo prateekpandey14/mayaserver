@@ -442,7 +442,7 @@ func setJivaLblProps(pvc *v1.PersistentVolumeClaim) error {
 	if pvc.Labels[string(v1.PVPControllerImageLbl)] == "" {
 		// TODO
 		// Move to constants
-		pvc.Labels[string(v1.PVPControllerImageLbl)] = "openebs/jiva:latest"
+		pvc.Labels[string(v1.PVPControllerImageLbl)] = "openebs/jiva:0.3-RC2"
 	}
 
 	return nil
