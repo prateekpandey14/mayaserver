@@ -99,7 +99,7 @@ func (k *k8sUtil) NS() (string, error) {
 	}
 
 	// Get orchestrator provider profile from pvc
-	oPrfle, err := orchProfile.GetOrchProviderProfileByPVC(pvc)
+	oPrfle, err := orchProfile.GetOrchProviderProfile(pvc)
 	if err != nil {
 		return "", err
 	}
@@ -127,7 +127,10 @@ func (k *k8sUtil) InCluster() (bool, error) {
 	}
 
 	// Get orchestrator provider profile from pvc
-	oPrfle, err := orchProfile.GetOrchProviderProfileByPVC(pvc)
+	// TODO
+	// There can be various types of profile & not just PVC type
+	// However, pvc will pay a role in determining the profile type
+	oPrfle, err := orchProfile.GetOrchProviderProfile(pvc)
 	if err != nil {
 		return false, err
 	}

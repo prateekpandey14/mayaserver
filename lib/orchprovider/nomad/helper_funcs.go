@@ -28,18 +28,6 @@ func PvcToJobName(pvc *v1.PersistentVolumeClaim) (string, error) {
 }
 
 // Transform a PersistentVolumeClaim type to Nomad job type
-//
-// TODO
-// There is redundancy in validation. These should be gone once the transformation
-// is handled from jiva namespace.
-//
-// TODO
-// It may be better to avoid using pvc as a direct argument
-// It should be key:value pairs
-// The keys can be of type SpecsLbl
-// These keys can in turn be used in PVC as well
-// However, the argument to this function should be a struct that consists of
-// a map of SpecsLbl:Value
 func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 
 	if pvc == nil {
@@ -50,69 +38,15 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		return nil, fmt.Errorf("Missing VSM name in pvc")
 	}
 
-	if pvc.Labels == nil {
-		return nil, fmt.Errorf("Missing labels in pvc")
-	}
-
-	if pvc.Labels[string(v1.OrchRegionLbl)] == "" {
-		return nil, fmt.Errorf("Missing region in pvc")
-	}
-
-	if pvc.Labels[string(v1.OrchDCLbl)] == "" {
-		return nil, fmt.Errorf("Missing datacenter in pvc")
-	}
-
-	//if pvc.Labels[string(v1jiva.JivaFrontEndImageLbl)] == "" {
-	if pvc.Labels[string(v1.PVPControllerImageLbl)] == "" {
-		return nil, fmt.Errorf("Missing controller image in pvc")
-	}
-
-	//if pvc.Labels[string(v1jiva.JivaFrontEndIPLbl)] == "" {
-	if pvc.Labels[string(v1.PVPControllerIPsLbl)] == "" {
-		return nil, fmt.Errorf("Missing controller IP(s) in pvc")
-	}
-
-	//if pvc.Labels[string(v1jiva.JivaBackEndAllIPsLbl)] == "" {
-	if pvc.Labels[string(v1.PVPReplicaIPsLbl)] == "" {
-		return nil, fmt.Errorf("Missing replica IPs in pvc")
-	}
-
-	// TODO These should be derived from:
-	//
-	// pvc.Spec.NetworkResources
-	// pvc.Spec.StorageResources
-	// These types are currently strict but less flexible
-
-	if pvc.Labels[string(v1.CNTypeLbl)] == "" {
-		return nil, fmt.Errorf("Missing CN type in pvc")
-	}
-
-	if pvc.Labels[string(v1.CNSubnetLbl)] == "" {
-		return nil, fmt.Errorf("Missing CN subnet in pvc")
-	}
-
-	if pvc.Labels[string(v1.CNInterfaceLbl)] == "" {
-		return nil, fmt.Errorf("Missing CN interface in pvc")
-	}
-
-	//if pvc.Labels[string(v1.CSPersistenceLocationLbl)] == "" {
-	if pvc.Labels[string(v1.PVPPersistenceLocationLbl)] == "" {
-		return nil, fmt.Errorf("Missing persistent location in pvc")
-	}
-
-	if pvc.Labels[string(v1.PVPStorageSizeLbl)] == "" {
-		return nil, fmt.Errorf("Missing storage size in pvc")
-	}
-
-	jivaFEVolSize := pvc.Labels[string(v1.PVPStorageSizeLbl)]
-	jivaBEVolSize := pvc.Labels[string(v1.PVPStorageSizeLbl)]
+	jivaFEVolSize := v1.GetPVPStorageSize(pvc.Labels)
+	jivaBEVolSize := jivaFEVolSize
 
 	// TODO
 	// ID is same as Name currently
 	// Do we need to think on it ?
 	jobName := helper.StringToPtr(pvc.Name)
-	region := helper.StringToPtr(pvc.Labels[string(v1.OrchRegionLbl)])
-	dc := pvc.Labels[string(v1.OrchDCLbl)]
+	region := helper.StringToPtr(v1.GetOrchestratorRegion(pvc.Labels))
+	dc := v1.GetOrchestratorDC(pvc.Labels)
 
 	jivaGroupName := "jiva-pod"
 	jivaVolName := pvc.Name
@@ -125,21 +59,29 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	feTaskName := "fe"
 	beTaskName := "be"
 
-	jivaFeVersion := pvc.Labels[string(v1.PVPControllerImageLbl)]
-	jivaNetworkType := pvc.Labels[string(v1.CNTypeLbl)]
-	jivaFeIP := pvc.Labels[string(v1.PVPControllerIPsLbl)]
+	jivaFeVersion := v1.GetControllerImage(pvc.Labels)
+	jivaNetworkType := v1.GetOrchestratorNetworkType(pvc.Labels)
 
-	jivaBEPersistentStor := pvc.Labels[string(v1.PVPPersistenceLocationLbl)]
-	jivaBECount := pvc.Labels[string(v1.PVPReplicaCountLbl)]
-	iJivaBECount, err := strconv.Atoi(jivaBECount)
+	jivaBEPersistentStor := v1.GetPVPPersistentPathOnly(pvc.Labels)
+
+	iJivaBECount, err := v1.GetPVPReplicaCountInt(pvc.Labels)
 	if err != nil {
 		return nil, err
 	}
 
-	jivaBeIPs := pvc.Labels[string(v1.PVPReplicaIPsLbl)]
+	jivaFeIPs, jivaBeIPs, err := v1.GetPVPVSMIPs(pvc.Labels)
+	if err != nil {
+		return nil, err
+	}
+
+	jivaFeIPArr := strings.Split(jivaFeIPs, ",")
 	jivaBeIPArr := strings.Split(jivaBeIPs, ",")
-	jivaFeSubnet := pvc.Labels[string(v1.CNSubnetLbl)]
-	jivaFeInterface := pvc.Labels[string(v1.CNInterfaceLbl)]
+	jivaFeSubnet, err := v1.GetOrchestratorNetworkSubnet(pvc.Labels)
+	if err != nil {
+		return nil, err
+	}
+
+	jivaFeInterface := v1.GetOrchestratorNetworkInterface(pvc.Labels)
 
 	// Meta information will be used to:
 	//    1. Persist metadata w.r.t this job
@@ -149,10 +91,15 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	// In addition, job's ENV property can source these metadata by interpreting
 	// them.
 	jobMeta := map[string]string{
-		string(v1jiva.JivaBackEndVolSizeLbl): jivaBEVolSize,
-		string(v1jiva.JivaFrontEndIPLbl):     jivaFeIP,
-		string(v1jiva.JivaTargetPortalLbl):   jivaFeIP + ":" + string(v1.JivaISCSIPortDef),
-		string(v1jiva.JivaIqnLbl):            string(v1.JivaIqnFormatPrefix) + ":" + jivaVolName,
+		string(v1.ReplicaStatusAPILbl):    "",
+		string(v1.ControllerStatusAPILbl): "",
+		string(v1.TargetPortalsAPILbl):    jivaFeIPArr[0] + ":" + string(v1.JivaISCSIPortDef),
+		string(v1.ClusterIPsAPILbl):       "",
+		string(v1.ReplicaIPsAPILbl):       jivaBeIPs,
+		string(v1.ControllerIPsAPILbl):    jivaFeIPs,
+		string(v1.IQNAPILbl):              string(v1.JivaIqnFormatPrefix) + ":" + jivaVolName,
+		string(v1.VolumeSizeAPILbl):       jivaBEVolSize,
+		string(v1.ReplicaCountAPILbl):     strconv.Itoa(iJivaBECount),
 	}
 
 	// Jiva FE's ENV among other things interpolates Nomad's built-in properties
@@ -161,7 +108,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 		"JIVA_CTL_VERSION": jivaFeVersion,
 		"JIVA_CTL_VOLNAME": jivaVolName,
 		"JIVA_CTL_VOLSIZE": jivaFEVolSize,
-		"JIVA_CTL_IP":      jivaFeIP,
+		"JIVA_CTL_IP":      jivaFeIPArr[0],
 		"JIVA_CTL_SUBNET":  jivaFeSubnet,
 		"JIVA_CTL_IFACE":   jivaFeInterface,
 	}
@@ -170,7 +117,7 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 	beEnv := map[string]string{
 		"NOMAD_ALLOC_INDEX": "${NOMAD_ALLOC_INDEX}",
 		"JIVA_REP_NAME":     pvc.Name + "-" + beTaskName + "${NOMAD_ALLOC_INDEX}",
-		"JIVA_CTL_IP":       jivaFeIP,
+		"JIVA_CTL_IP":       jivaFeIPArr[0],
 		"JIVA_REP_VOLNAME":  jivaVolName,
 		"JIVA_REP_VOLSIZE":  jivaBEVolSize,
 		"JIVA_REP_VOLSTORE": jivaBEPersistentStor + pvc.Name + "/" + beTaskName + "${NOMAD_ALLOC_INDEX}",
@@ -308,50 +255,25 @@ func PvcToJob(pvc *v1.PersistentVolumeClaim) (*api.Job, error) {
 // setBEIPs sets jiva backend environment with all backend IP addresses
 func setBEIPs(beEnv, jobMeta map[string]string, jivaBeIPArr []string, iJivaBECount int) error {
 
-	if iJivaBECount == 0 {
-		return fmt.Errorf("Invalid replica count '0'")
+	if iJivaBECount <= 0 {
+		return fmt.Errorf("Invalid VSM Replica count '%d' provided", iJivaBECount)
 	}
 
 	if len(jivaBeIPArr) != iJivaBECount {
 		return fmt.Errorf("Replica IP count '%d' does not match replica count '%d'", len(jivaBeIPArr), iJivaBECount)
 	}
 
-	jobMeta[string(v1.PVPReplicaCountLbl)] = strconv.Itoa(iJivaBECount)
-
 	var k, v string
 
 	for i := 0; i < iJivaBECount; i++ {
 		k = string(v1jiva.JivaBackEndIPPrefixLbl) + strconv.Itoa(i)
 		v = jivaBeIPArr[i]
-
 		beEnv[k] = v
-		jobMeta[k] = v
 	}
 
 	return nil
 }
 
-// TODO
-// Transformation from JobSummary to pv
-//
-//  1. Need an Interface or functional callback defined at
-// lib/api/v1/nomad.go &
-//  2. implemented by the volume plugins that want
-// to be orchestrated by Nomad
-//  3. This transformer instance needs to be injected from
-// volume plugin to orchestrator, in a generic way.
-//func JobSummaryToPv(jobSummary *api.JobSummary) (*v1.PersistentVolume, error) {
-//
-//	if jobSummary == nil {
-//		return nil, fmt.Errorf("Nil nomad job summary provided")
-//	}
-//
-// TODO
-// Needs to be filled up
-//	return &v1.PersistentVolume{}, nil
-//}
-
-// TODO
 // Transform the evaluation of a job to a PersistentVolume
 func JobEvalToPv(jobName string, eval *api.Evaluation) (*v1.PersistentVolume, error) {
 
@@ -382,18 +304,16 @@ func JobEvalToPv(jobName string, eval *api.Evaluation) (*v1.PersistentVolume, er
 	return pv, nil
 }
 
-// Transform a PersistentVolume type to Nomad Job type
-func PvToJob(pv *v1.PersistentVolume) (*api.Job, error) {
-
-	if pv == nil {
-		return nil, fmt.Errorf("Nil persistent volume provided")
+func MakeJob(name string) (*api.Job, error) {
+	if name == "" {
+		return nil, fmt.Errorf("Job name required to create a Job")
 	}
 
 	return &api.Job{
-		Name: helper.StringToPtr(pv.Name),
+		Name: helper.StringToPtr(name),
 		// TODO
 		// ID is same as Name currently
-		ID: helper.StringToPtr(pv.Name),
+		ID: helper.StringToPtr(name),
 	}, nil
 }
 
@@ -412,9 +332,20 @@ func JobToPv(job *api.Job) (*v1.PersistentVolume, error) {
 	}
 	pv.Status = pvs
 
+	// Remember we use the job's metadata to persist metadata w.r.t the job
+	pv.Annotations = job.Meta
+
 	if *job.Status == structs.JobStatusRunning {
-		// Remember we use the job's metadata to persist metadata w.r.t the job
-		pv.Annotations = job.Meta
+		// Override the status properties only
+		pv.Annotations[string(v1.ReplicaStatusAPILbl)] = structs.JobStatusRunning
+		pv.Annotations[string(v1.ControllerStatusAPILbl)] = structs.JobStatusRunning
+	} else {
+		// Override the status properties only
+		// TODO
+		//    Need to iterate the job taskgroup & set appropriate status rather than
+		// a generic status
+		pv.Annotations[string(v1.ReplicaStatusAPILbl)] = *job.Status
+		pv.Annotations[string(v1.ControllerStatusAPILbl)] = *job.Status
 	}
 
 	return pv, nil

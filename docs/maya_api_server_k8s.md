@@ -1,4 +1,4 @@
-### Maya API server and Kubernetes
+### Maya API server with Kubernetes as its orchestration provider
 
 Maya API server is launched as a deploy/pod unit in Kubernetes. This service is 
 the interface for the storage clients to operate on OpenEBS storage. Typically, 
@@ -177,15 +177,15 @@ curl http://10.44.0.1:5656/latest/volumes/info/my-jiva-vsm
 {
   "metadata": {
     "annotations": {
-      "vsm.openebs.io\/controller-status": "Running",
-      "vsm.openebs.io\/targetportals": "10.103.9.225:3260",
-      "vsm.openebs.io\/cluster-ips": "10.103.9.225",
-      "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
-      "vsm.openebs.io\/replica-count": "2",
-      "vsm.openebs.io\/volume-size": "1G",
-      "vsm.openebs.io\/controller-ips": "10.44.0.2",
-      "vsm.openebs.io\/replica-ips": "10.44.0.3,10.36.0.2",
-      "vsm.openebs.io\/replica-status": "Running,Running"
+      "vsm.openebs.io/controller-status": "Running",
+      "vsm.openebs.io/targetportals": "10.103.9.225:3260",
+      "vsm.openebs.io/cluster-ips": "10.103.9.225",
+      "vsm.openebs.io/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
+      "vsm.openebs.io/replica-count": "2",
+      "vsm.openebs.io/volume-size": "1G",
+      "vsm.openebs.io/controller-ips": "10.44.0.2",
+      "vsm.openebs.io/replica-ips": "10.44.0.3,10.36.0.2",
+      "vsm.openebs.io/replica-status": "Running,Running"
     },
     "creationTimestamp": null,
     "name": "my-jiva-vsm"
@@ -234,15 +234,15 @@ curl http://10.44.0.1:5656/latest/volumes/
     {
       "metadata": {
         "annotations": {
-          "vsm.openebs.io\/controller-ips": "10.44.0.2",
-          "vsm.openebs.io\/replica-ips": "10.44.0.3,10.36.0.2",
-          "vsm.openebs.io\/cluster-ips": "10.103.9.225",
-          "vsm.openebs.io\/replica-count": "2",
-          "vsm.openebs.io\/volume-size": "1G",
-          "vsm.openebs.io\/targetportals": "10.103.9.225:3260",
-          "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
-          "vsm.openebs.io\/controller-status": "Running",
-          "vsm.openebs.io\/replica-status": "Running,Running"
+          "vsm.openebs.io/controller-ips": "10.44.0.2",
+          "vsm.openebs.io/replica-ips": "10.44.0.3,10.36.0.2",
+          "vsm.openebs.io/cluster-ips": "10.103.9.225",
+          "vsm.openebs.io/replica-count": "2",
+          "vsm.openebs.io/volume-size": "1G",
+          "vsm.openebs.io/targetportals": "10.103.9.225:3260",
+          "vsm.openebs.io/iqn": "iqn.2016-09.com.openebs.jiva:my-2-jiva-vsm",
+          "vsm.openebs.io/controller-status": "Running",
+          "vsm.openebs.io/replica-status": "Running,Running"
         },
         "creationTimestamp": null,
         "name": "my-2-jiva-vsm"
@@ -266,15 +266,15 @@ curl http://10.44.0.1:5656/latest/volumes/
     {
       "metadata": {
         "annotations": {
-          "vsm.openebs.io\/volume-size": "2G",
-          "vsm.openebs.io\/controller-status": "Running",
-          "vsm.openebs.io\/replica-ips": "10.44.0.4",
-          "vsm.openebs.io\/targetportals": "10.104.146.117:3260",
-          "vsm.openebs.io\/iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
-          "vsm.openebs.io\/replica-count": "1",
-          "vsm.openebs.io\/controller-ips": "10.36.0.3",
-          "vsm.openebs.io\/replica-status": "Running",
-          "vsm.openebs.io\/cluster-ips": "10.104.146.117"
+          "vsm.openebs.io/volume-size": "2G",
+          "vsm.openebs.io/controller-status": "Running",
+          "vsm.openebs.io/replica-ips": "10.44.0.4",
+          "vsm.openebs.io/targetportals": "10.104.146.117:3260",
+          "vsm.openebs.io/iqn": "iqn.2016-09.com.openebs.jiva:my-jiva-vsm",
+          "vsm.openebs.io/replica-count": "1",
+          "vsm.openebs.io/controller-ips": "10.36.0.3",
+          "vsm.openebs.io/replica-status": "Running",
+          "vsm.openebs.io/cluster-ips": "10.104.146.117"
         },
         "creationTimestamp": null,
         "name": "my-jiva-vsm"

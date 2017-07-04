@@ -8,10 +8,10 @@ type ContainerNetworkingLbl string
 // TODO
 // Deprecate
 const (
-	CNTypeLbl            ContainerNetworkingLbl = "cn.openebs.io/type"
-	CNNetworkCIDRAddrLbl ContainerNetworkingLbl = "cn.openebs.io/network-cidr-addr"
-	CNSubnetLbl          ContainerNetworkingLbl = "cn.openebs.io/subnet"
-	CNInterfaceLbl       ContainerNetworkingLbl = "cn.openebs.io/interface"
+//CNTypeLbl            ContainerNetworkingLbl = "cn.openebs.io/type"
+//CNNetworkCIDRAddrLbl ContainerNetworkingLbl = "cn.openebs.io/network-cidr-addr"
+//CNSubnetLbl          ContainerNetworkingLbl = "cn.openebs.io/subnet"
+//CNInterfaceLbl       ContainerNetworkingLbl = "cn.openebs.io/interface"
 )
 
 // TODO
@@ -55,6 +55,103 @@ const (
 //DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
 )
 
+type NomadEnvironmentVariable string
+
+const (
+	// NomadAddressEnvKey
+	NomadAddressEnvKey NomadEnvironmentVariable = "NOMAD_ADDR"
+	// NomadRegionEnvKey
+	NomadRegionEnvKey NomadEnvironmentVariable = "NOMAD_REGION"
+)
+
+//
+type EnvironmentVariableLabel string
+
+const (
+	//
+	EnvVariableContextLbl EnvironmentVariableLabel = "env.mapi.openebs.io/env-var-ctx"
+)
+
+// EnvironmentVariableDefaults is a typed label to provide default values w.r.t
+// environment variable properties.
+type EnvironmentVariableDefaults string
+
+const (
+	// Default value for environment variable context
+	EnvVariableContextDef EnvironmentVariableDefaults = "DEFAULT"
+)
+
+//
+type EnvironmentVariableKey string
+
+const (
+	// PVPProfileNameEnvVarKey is the environment variable key for persistent
+	// volume provisioner's profile name
+	PVPProfileNameEnvVarKey EnvironmentVariableKey = "_PVP_PROFILE_NAME"
+	// PVPNameEnvVarKey is the environment variable key for persistent volume
+	// provisioner's name
+	PVPNameEnvVarKey EnvironmentVariableKey = "_PVP_NAME"
+	// PVPControllerImageEnvVarKey is the environment variable key for persistent
+	// volume provisioner's controller image
+	PVPControllerImageEnvVarKey EnvironmentVariableKey = "_CONTROLLER_IMAGE"
+	// PVPControllerIPsEnvVarKey is the environment variable key for persistent
+	// volume provisioner's controller IPs
+	//PVPControllerIPsEnvVarKey EnvironmentVariableKey = "_CONTROLLER_IPS"
+	// PVPReplicaIPsEnvVarKey is the environment variable key for persistent
+	// volume provisioner's replica IPs
+	//PVPReplicaIPsEnvVarKey EnvironmentVariableKey = "_REPLICA_IPS"
+	// PVPPersistentPathEnvVarKey is the environment variable key for persistent
+	// volume provisioner's replica persistent path
+	PVPPersistentPathEnvVarKey EnvironmentVariableKey = "_PERSISTENT_PATH"
+	// PVPStorageSizeEnvVarKey is the environment variable key for persistent
+	// volume provisioner's replica size
+	PVPStorageSizeEnvVarKey EnvironmentVariableKey = "_STORAGE_SIZE"
+	// PVPReplicaCountEnvVarKey is the environment variable key for persistent
+	// volume provisioner's replica count
+	PVPReplicaCountEnvVarKey EnvironmentVariableKey = "_REPLICA_COUNT"
+	// PVPReplicaImageEnvVarKey is the environment variable key for persistent
+	// volume provisioner's replica image
+	PVPReplicaImageEnvVarKey EnvironmentVariableKey = "_REPLICA_IMAGE"
+	// PVPControllerCountEnvVarKey is the environment variable key for persistent
+	// volume provisioner's controller count
+	PVPControllerCountEnvVarKey EnvironmentVariableKey = "_CONTROLLER_COUNT"
+
+	// OrchestratorNameEnvVarKey is the environment variable key for
+	// orchestration provider's name
+	OrchestratorNameEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_NAME"
+	// OrchestratorRegionEnvVarKey is the environment variable key for orchestration
+	// provider's region
+	OrchestratorRegionEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_REGION"
+	// OrchestratorDCEnvVarKey is the environment variable key for orchestration
+	// provider's datacenter
+	OrchestratorDCEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_DC"
+	// OrchestratorAddressEnvVarKey is the environment variable key for orchestration
+	// provider's address
+	//
+	// Usage:
+	// <CTX>_<REGION>_<DC>_ORCHESTRATOR_ADDR = 10.20.1.1
+	OrchestratorAddressEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_ADDR"
+
+	// OrchestratorCNTypeEnvVarKey is the environment variable key for orchestration
+	// provider's network type
+	OrchestratorCNTypeEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_CN_TYPE"
+	// OrchestratorCNSubnetEnvVarKey is the environment variable key for orchestration
+	// provider's network subnet
+	//OrchestratorCNSubnetEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_CN_SUBNET"
+	// OrchestratorCNInterfaceEnvVarKey is the environment variable key for orchestration
+	// provider's network interface
+	OrchestratorCNInterfaceEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_CN_INTERFACE"
+	// OrchestratorCNAddrEnvVarKey is the environment variable key for orchestration
+	// provider's network address
+	OrchestratorCNAddrEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_CN_ADDRESS"
+	// OrchestratorNSEnvVarKey is the environment variable key for orchestration
+	// provider's namespace
+	OrchestratorNSEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_NS"
+	// OrchestratorInClusterEnvVarKey is the environment variable key for orchestration
+	// provider's in-cluster flag
+	OrchestratorInClusterEnvVarKey EnvironmentVariableKey = "_ORCHESTRATOR_IN_CLUSTER"
+)
+
 // OrchProviderProfileLabel is a typed label to determine orchestration provider
 // profile's values.
 type OrchProviderProfileLabel string
@@ -66,12 +163,25 @@ const (
 	OrchRegionLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/region"
 	// Label / Tag for an orchestrator datacenter
 	OrchDCLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/dc"
+	// OrchAddrLbl is the Label / Tag for an orchestrator address
+	OrchAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/address"
 	// Label / Tag for an orchestrator namespace
 	OrchNSLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/ns"
 	// Label / Tag for an orchestrator network address in CIDR format
-	OPNetworkAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/network-cidr"
+	//OPNetworkAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/network-cidr"
+	//OrchCNAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/cn-addr"
 	// Label / Tag for an orchestrator's in-cluster flag
-	OPInClusterLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/in-cluster"
+	//OPInClusterLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/in-cluster"
+	OrchInClusterLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/in-cluster"
+	// OrchCNTypeLbl is the Label / Tag for an orchestrator's networking type
+	OrchCNTypeLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/cn-type"
+	// OrchCNNetworkAddrLbl is the Label / Tag for an orchestrator's network address
+	// in CIDR notation
+	OrchCNNetworkAddrLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/cn-addr"
+	// OrchCNSubnetLbl is the Label / Tag for an orchestrator's network subnet
+	OrchCNSubnetLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/cn-subnet"
+	// OrchCNInterfaceLbl is the Label / Tag for an orchestrator's network interface
+	OrchCNInterfaceLbl OrchProviderProfileLabel = "orchprovider.mapi.openebs.io/cn-interface"
 )
 
 // OrchProviderDefaults is a typed label to provide default values w.r.t
@@ -81,13 +191,25 @@ type OrchProviderDefaults string
 const (
 	// Default value for orchestrator's network address
 	// NOTE: Should be in valid CIDR notation
-	OPNetworkAddrDef OrchProviderDefaults = "172.28.128.1/24"
-	// Default value for orchestrator's network subnet
-	OPNetworkSubnetDef OrchProviderDefaults = "24"
+	//OPNetworkAddrDef OrchProviderDefaults = "172.28.128.1/24"
+	OrchNetworkAddrDef OrchProviderDefaults = "172.28.128.1/24"
+	// OrchCNSubnetDef is the default value for orchestrator's network subnet
+	//OrchCNSubnetDef OrchProviderDefaults = "24"
 	// Default value for orchestrator's in-cluster flag
-	OPInClusterDef OrchProviderDefaults = "true"
+	//OPInClusterDef OrchProviderDefaults = "true"
+	OrchInClusterDef OrchProviderDefaults = "true"
 	// Default value for orchestrator namespace
-	OrchNSDefLbl OrchProviderDefaults = "default"
+	OrchNSDef OrchProviderDefaults = "default"
+	// OrchRegionDef is the default value of orchestrator region
+	OrchRegionDef OrchProviderDefaults = "global"
+	// OrchDCDef is the default value of orchestrator datacenter
+	OrchDCDef OrchProviderDefaults = "dc1"
+	// OrchAddressDef is the default value of orchestrator address
+	OrchAddressDef OrchProviderDefaults = "127.0.0.1"
+	// OrchCNTypeDef is the default value of orchestrator network type
+	OrchCNTypeDef OrchProviderDefaults = "host"
+	// OrchCNInterfaceDef is the default value of orchestrator network interface
+	OrchCNInterfaceDef OrchProviderDefaults = "enp0s8"
 )
 
 // VolumeProvisionerProfileLabel is a typed label to determine volume provisioner
@@ -98,7 +220,8 @@ const (
 	// Label / Tag for a persistent volume provisioner profile's name
 	PVPProfileNameLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/profile-name"
 	// Label / Tag for a persistent volume provisioner's persistence location
-	PVPPersistenceLocationLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistence-location"
+	//PVPPersistenceLocationLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistence-location"
+
 	// Label / Tag for a persistent volume provisioner's replica support
 	PVPReqReplicaLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/req-replica"
 	// Label / Tag for a persistent volume provisioner's networking support
@@ -165,6 +288,18 @@ const (
 	PVPReplicaImageDef VolumeProvisionerDefaults = "openebs/jiva:0.3-RC2"
 	// Default value for persistent volume provisioner's networking support
 	PVPReqNetworkingDef VolumeProvisionerDefaults = "false"
+	// PVPControllerIPsDef is the default value for persistent volume provisioner's
+	// controller IP(s)
+	//PVPControllerIPsDef VolumeProvisionerDefaults = "10.0.0.1"
+	// PVPReplicaIPsDef is the default value for persistent volume provisioner's
+	// replica IP(s)
+	//PVPReplicaIPsDef VolumeProvisionerDefaults = "10.0.0.2, 10.0.0.3"
+	// PVPPersistentPathDef is the default value for persistent volume provisioner's
+	// replica persistent path
+	PVPPersistentPathDef VolumeProvisionerDefaults = "/var/openebs"
+	// PVPStorageSizeDef is the default value for persistent volume provisioner's
+	// replica size
+	PVPStorageSizeDef VolumeProvisionerDefaults = "1G"
 )
 
 // NameLabel type will be used to identify various maya api service components
@@ -369,11 +504,11 @@ const (
 
 	// JivaPersistentPathDef is used to set default value for
 	// persistent volume's persist path
-	JivaPersistentPathDef JivaDefaults = "/var/openebs"
+	//JivaPersistentPathDef JivaDefaults = "/var/openebs"
 
 	// JivaStorSizeDef is used to set default value for
 	// persistent volume's persist path
-	JivaStorSizeDef JivaDefaults = "1G"
+	//JivaStorSizeDef JivaDefaults = "1G"
 )
 
 // These will be used to provide array based constants that are

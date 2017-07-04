@@ -90,7 +90,6 @@ type VolumeProvisionerProfile interface {
 // profile. It will decide first based on the provided specifications failing
 // which will ensure a default profile is returned.
 func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
-	//if pvc == nil || pvc.Labels == nil {
 	if pvc == nil {
 		return nil, fmt.Errorf("PVC is required to create a volume provisioner profile")
 	}
@@ -112,7 +111,6 @@ func GetVolProProfileByPVC(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProf
 //    PVC based volume provisioner profile is considered as default
 func GetDefaultVolProProfile(pvc *v1.PersistentVolumeClaim) (VolumeProvisionerProfile, error) {
 
-	//if pvc == nil || pvc.Labels == nil {
 	if pvc == nil {
 		return nil, fmt.Errorf("PVC is required to create default volume provisioner profile")
 	}
@@ -190,11 +188,7 @@ func (pp *pvcVolProProfile) PVC() (*v1.PersistentVolumeClaim, error) {
 // e.g. K8s, Nomad, Mesos, Swarm, etc. It can be Docker engine as well.
 func (pp *pvcVolProProfile) Orchestrator() (v1.OrchProviderRegistry, bool, error) {
 	// Extract the name of orchestration provider
-	oName := v1.OrchestratorName(pp.pvc.Labels)
-
-	if string(oName) == "" {
-		return v1.DefaultOrchestratorName(), true, nil
-	}
+	oName := v1.GetOrchestratorName(pp.pvc.Labels)
 
 	// Get the orchestrator instance
 	return oName, true, nil
@@ -213,15 +207,13 @@ func (pp *pvcVolProProfile) Copy(vsm string) (VolumeProvisionerProfile, error) {
 	}
 
 	t := strings.TrimSpace(vsm)
-
 	if t == "" {
-		return nil, fmt.Errorf("Empty VSM name provided")
+		return nil, fmt.Errorf("VSM name can not be empty")
 	}
 
 	// copy
 	n := new(pvcVolProProfile)
 	*n = *pp
-
 	n.vsmName = t
 
 	return n, nil
@@ -251,28 +243,13 @@ func (pp *pvcVolProProfile) VSMName() (string, error) {
 // ControllerCount gets the number of controllers
 func (pp *pvcVolProProfile) ControllerCount() (int, error) {
 	// Extract the controller count from pvc
-	cCount := v1.ControllerCount(pp.pvc.Labels)
-
-	if cCount == "" {
-		return v1.DefaultControllerCount(), nil
-	}
-
-	iCCount, err := strconv.Atoi(cCount)
-	if err != nil {
-		return 0, err
-	}
-
-	return iCCount, nil
+	return v1.GetPVPControllerCountInt(pp.pvc.Labels)
 }
 
 // ControllerImage gets the controller's image currently its docker image label.
 func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
 	// Extract the controller image from pvc
-	cImg := v1.ControllerImage(pp.pvc.Labels)
-
-	if cImg == "" {
-		return v1.DefaultControllerImage(), true, nil
-	}
+	cImg := v1.GetControllerImage(pp.pvc.Labels)
 
 	return cImg, true, nil
 }
@@ -293,11 +270,7 @@ func (pp *pvcVolProProfile) ReqReplica() bool {
 // ReplicaImage gets the replica's image currently its docker image label.
 func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
 	// Extract the replica image from pvc
-	rImg := v1.ReplicaImage(pp.pvc.Labels)
-
-	if rImg == "" {
-		return v1.DefaultReplicaImage(), true, nil
-	}
+	rImg := v1.GetPVPReplicaImage(pp.pvc.Labels)
 
 	return rImg, true, nil
 }
@@ -305,7 +278,7 @@ func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
 // StorageSize gets the storage size for each persistent volume replica(s)
 func (pp *pvcVolProProfile) StorageSize() (string, error) {
 	// Extract the storage size from pvc
-	sSize := v1.StorageSize(pp.pvc.Labels)
+	sSize := v1.GetPVPStorageSize(pp.pvc.Labels)
 
 	if sSize == "" {
 		return "", fmt.Errorf("Missing storage size in '%s:%s'", pp.Label(), pp.Name())
@@ -317,18 +290,7 @@ func (pp *pvcVolProProfile) StorageSize() (string, error) {
 // ReplicaCount get the number of replicas required
 func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
 	// Extract the replica count from pvc
-	rCount := v1.ReplicaCount(pp.pvc.Labels)
-
-	if rCount == "" {
-		return v1.DefaultReplicaCount(), nil
-	}
-
-	iRCount, err := strconv.Atoi(rCount)
-	if err != nil {
-		return 0, err
-	}
-
-	return iRCount, nil
+	return v1.GetPVPReplicaCountInt(pp.pvc.Labels)
 }
 
 // ReqNetworking indicates if any networking related operations are required to
@@ -433,94 +395,9 @@ func (pp *pvcVolProProfile) PersistentPath(position int, rCount int) (string, er
 	}
 
 	// Extract the persistent path from pvc
-	pPath := v1.JivaPersistentPath(pp.pvc.Labels, vsm, position)
-
-	if pPath == "" {
-		return v1.DefaultJivaPersistentPath(vsm, position), nil
-	}
-
-	//pPathArr := strings.Split(pPath, ",")
-
-	//if len(pPathArr) != rCount {
-	//	return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
-	//}
-
-	//iPPath := strings.TrimSpace(pPathArr[position-1])
+	pPath := v1.GetPVPPersistentPath(pp.pvc.Labels, vsm, string(v1.JivaPersistentMountPathDef))
 
 	return pPath, nil
-}
-
-// srVolProProfile represents a single replica based persistent volume
-// provisioner profile. It relies on persistent volume claim to source other
-// volume provisioner properties.
-//
-// NOTE:
-//    Replica count property specified in persistent volume claim will override
-// the one specified in etcd
-//
-// NOTE:
-//    This is a concrete implementation of volume.VolumeProvisionerProfile
-type srVolProProfile struct {
-	pvcVolProProfile
-}
-
-// ReqReplica indicates if replica(s) are required by the persistent volume
-// provisioner
-func (srp *srVolProProfile) ReqReplica() bool {
-	return util.CheckTruthy("true")
-}
-
-// ReplicaCount gets the number of replicas required. In this case it returns 1
-// always.
-func (srp *srVolProProfile) ReplicaCount() (int, error) {
-	return 1, nil
-}
-
-// PersistentPathCount gets the count of persistent paths required for all the
-// replicas. In this case it returns 1 always.
-//
-// NOTE:
-//    The count needs to be equal to no of replicas.
-func (srp *srVolProProfile) PersistentPathCount() (int, error) {
-	return 1, nil
-}
-
-// PersistentPath gets the persistent path based on the position i.e. replica
-// position.
-//
-// NOTE:
-//    `position` is just a positional value that determines a particular replica
-// out of the total replica count i.e. rCount.
-func (srp *srVolProProfile) PersistentPath(position int, rCount int) (string, error) {
-	if rCount != 1 {
-		return "", fmt.Errorf("Invalid replica count. Expected '1' Provided '%d'", rCount)
-	}
-
-	if position != 1 {
-		return "", fmt.Errorf("Invalid persistent path index. Expected '0' Provided '%d'", position)
-	}
-
-	vsm, err := srp.VSMName()
-	if err != nil {
-		return "", err
-	}
-
-	// Extract the persistent path from pvc
-	pPath := v1.JivaPersistentPath(srp.pvc.Labels, vsm, position)
-
-	if pPath == "" {
-		return v1.DefaultJivaPersistentPath(vsm, position), nil
-	}
-
-	pPathArr := strings.Split(pPath, ",")
-
-	if len(pPathArr) != rCount {
-		return "", fmt.Errorf("VSM '%s' persistent paths '%d' and replicas '%d' mismatch", vsm, len(pPathArr), rCount)
-	}
-
-	iPPath := strings.TrimSpace(pPathArr[position-1])
-
-	return iPPath, nil
 }
 
 // etcdVolProProfile represents a generic volume provisioner profile whose

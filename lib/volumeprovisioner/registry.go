@@ -20,6 +20,16 @@ var (
 	volProvisionerRegistry = make(map[v1.VolumeProvisionerRegistry]VolumeProvisionerFactory)
 )
 
+// HasVolumeProvisioner returns true if name corresponds to an already
+// registered volume provisioner.
+func HasVolumeProvisioner(name v1.VolumeProvisionerRegistry) bool {
+	volProvisionerRegMutex.Lock()
+	defer volProvisionerRegMutex.Unlock()
+
+	_, found := volProvisionerRegistry[name]
+	return found
+}
+
 // RegisterVolumeProvisioner registers a persistent volume provisioner by the
 // provisioner's name. This registers the provisioner name with the provisioner's
 // instance creating function i.e. a Factory.
@@ -39,10 +49,11 @@ func RegisterVolumeProvisioner(name v1.VolumeProvisionerRegistry, vpInstFactory 
 	volProvisionerRegistry[name] = vpInstFactory
 }
 
-// GetVolumeProvisioner gets a new instance of the default persistent volume
-// provisioner.
-func GetVolumeProvisioner() (VolumeInterface, error) {
-	return GetVolumeProvisionerByName(v1.VolumeProvisionerRegistry(""))
+// GetVolumeProvisioner gets a new instance of the persistent volume
+// provisioner as requested in the profileMap.
+func GetVolumeProvisioner(profileMap map[string]string) (VolumeInterface, error) {
+	pvp := v1.VolumeProvisionerName(profileMap)
+	return GetVolumeProvisionerByName(v1.VolumeProvisionerRegistry(pvp))
 }
 
 // GetVolumeProvisionerByName gets a new instance of the named persistent volume
@@ -53,9 +64,11 @@ func GetVolumeProvisionerByName(name v1.VolumeProvisionerRegistry) (VolumeInterf
 	defer volProvisionerRegMutex.Unlock()
 
 	if string(name) == "" {
+		// Get the hard coded default
 		name = v1.DefaultVolumeProvisionerName()
 	}
 
+	// Look it up in the registry
 	vpInstFactory, found := volProvisionerRegistry[name]
 	if !found {
 		return nil, fmt.Errorf("'%s' is not registered as a persistent volume provisioner", name)

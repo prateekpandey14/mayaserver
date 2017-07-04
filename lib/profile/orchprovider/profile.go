@@ -43,22 +43,27 @@ type OrchProviderProfile interface {
 	InCluster() (bool, error)
 }
 
-// GetOrchProviderProfileByPVC will return a specific orchestration provider profile.
-// It will decide first based on the provided specifications failing which will
+// GetOrchProviderProfile will return a specific orchestration provider profile.
+//
+// TODO
+//  It will decide first based on the provided specifications failing which will
 // ensure a default profile is returned.
-func GetOrchProviderProfileByPVC(pvc *v1.PersistentVolumeClaim) (OrchProviderProfile, error) {
-	if pvc == nil {
-		return GetDefaultOrchProviderProfile()
+func GetOrchProviderProfile(pvc *v1.PersistentVolumeClaim) (OrchProviderProfile, error) {
+	var profileMap map[string]string
+
+	if pvc != nil && pvc.Labels != nil {
+		profileMap = pvc.Labels
+	} else {
+		profileMap = nil
 	}
 
-	// Extract the name of orchestrator profile
-	orchProflName := v1.OrchProfileName(pvc.Labels)
-
-	if orchProflName == "" {
-		return GetDefaultOrchProviderProfile()
-	}
-
-	return GetOrchProviderProfileByName(orchProflName)
+	// TODO
+	// This is hard coded to pvcOrchProviderProfile struct
+	// It should be based on inputs/env vars
+	return &pvcOrchProviderProfile{
+		pvc:        pvc,
+		profileMap: profileMap,
+	}, nil
 }
 
 // GetDefaultOrchProviderProfile will return the default orchestration provider
@@ -66,54 +71,42 @@ func GetOrchProviderProfileByPVC(pvc *v1.PersistentVolumeClaim) (OrchProviderPro
 //
 // NOTE:
 //    PVC based orchestration provider profile is considered as default
-func GetDefaultOrchProviderProfile() (OrchProviderProfile, error) {
-	return &pvcOrchProviderProfile{}, nil
-}
+//func GetDefaultOrchProviderProfile() (OrchProviderProfile, error) {
+//	return &pvcOrchProviderProfile{}, nil
+//}
 
 // TODO
 //
 // GetOrchProviderProfileByName will return a orchestration provider profile by
 // looking up from the provided profile name.
-func GetOrchProviderProfileByName(name string) (OrchProviderProfile, error) {
-	// TODO
-	// Search from the in-memory registry
+//func GetOrchProviderProfileByName(name string) (OrchProviderProfile, error) {
+// TODO
+// Search from the in-memory registry
 
-	// TODO
-	// Alternatively, search from external discoverable DBs if any
+// TODO
+// Alternatively, search from external discoverable DBs if any
 
-	return nil, fmt.Errorf("GetOrchProviderProfileByName is not yet implemented")
-}
+//return nil, fmt.Errorf("GetOrchProviderProfileByName is not yet implemented")
+//}
 
 // pvcOrchProviderProfile is a orchestration provider profile that is based on
 // persistent volume claim.
 //
 // NOTE:
-//    This will use defaults in-case the values are not set in persistent volume
-// claim.
-//
-// NOTE:
 //    This is a concrete implementation of orchprovider.VolumeProvisionerProfile
 type pvcOrchProviderProfile struct {
-	pvc *v1.PersistentVolumeClaim
+	pvc        *v1.PersistentVolumeClaim
+	profileMap map[string]string
 }
 
 // newPvcOrchProviderProfile provides a new instance of OrchProviderProfile that
 // is based on pvc (i.e. persistent volume claim).
-func newPvcOrchProviderProfile(pvc *v1.PersistentVolumeClaim) (OrchProviderProfile, error) {
-	// This does not care if pvc instance is nil
-	return &pvcOrchProviderProfile{
-		pvc: pvc,
-	}, nil
-}
-
-// defaults signals if this profile should use defaults entirely
-func (op *pvcOrchProviderProfile) defaults() bool {
-	if op.pvc == nil || op.pvc.Labels == nil {
-		return true
-	}
-
-	return false
-}
+//func newPvcOrchProviderProfile(pvc *v1.PersistentVolumeClaim) (OrchProviderProfile, error) {
+// This does not care if pvc instance is nil
+//return &pvcOrchProviderProfile{
+//	pvc: pvc,
+//}, nil
+//}
 
 // Label provides the label assigned against the persistent volume provisioner
 // profile.
@@ -145,15 +138,7 @@ func (op *pvcOrchProviderProfile) PVC() (*v1.PersistentVolumeClaim, error) {
 
 // NetworkAddr gets the network address in CIDR format
 func (op *pvcOrchProviderProfile) NetworkAddr() (string, error) {
-	var nAddr string
-
-	if op.defaults() {
-		return v1.NetworkAddrDef(), nil
-	}
-
-	if nAddr = v1.NetworkAddr(op.pvc.Labels); nAddr == "" {
-		return v1.NetworkAddrDef(), nil
-	}
+	nAddr := v1.GetOrchestratorNetworkAddr(op.profileMap)
 
 	if !nethelper.IsCIDR(nAddr) {
 		return "", fmt.Errorf("Network address not in CIDR format in '%s:%s'", op.Label(), op.Name())
@@ -164,19 +149,9 @@ func (op *pvcOrchProviderProfile) NetworkAddr() (string, error) {
 
 // NetworkSubnet gets the network's subnet in decimal format
 func (op *pvcOrchProviderProfile) NetworkSubnet() (string, error) {
-	var nAddr string
-
-	if op.defaults() {
-		return v1.NetworkSubnetDef(), nil
-	}
-
 	nAddr, err := op.NetworkAddr()
 	if err != nil {
 		return "", err
-	}
-
-	if nAddr == "" {
-		return v1.NetworkSubnetDef(), nil
 	}
 
 	subnet, err := nethelper.CIDRSubnet(nAddr)
@@ -190,15 +165,7 @@ func (op *pvcOrchProviderProfile) NetworkSubnet() (string, error) {
 // Get the namespace used at the orchestrator, where the request needs to be
 // operated on
 func (op *pvcOrchProviderProfile) NS() (string, error) {
-	var ns string
-
-	if op.defaults() {
-		return v1.NSDef(), nil
-	}
-
-	if ns = v1.NS(op.pvc.Labels); ns == "" {
-		return v1.NSDef(), nil
-	}
+	ns := v1.GetOrchestratorNS(op.profileMap)
 
 	return ns, nil
 }
@@ -206,15 +173,7 @@ func (op *pvcOrchProviderProfile) NS() (string, error) {
 // InCluster indicates if the request to the orchestrator is scoped to the
 // cluster where this request originated
 func (op *pvcOrchProviderProfile) InCluster() (bool, error) {
-	var inCluster string
-
-	if op.defaults() {
-		return util.CheckTruthy(v1.InClusterDef()), nil
-	}
-
-	if inCluster = v1.InCluster(op.pvc.Labels); inCluster == "" {
-		return util.CheckTruthy(v1.InClusterDef()), nil
-	}
+	inCluster := v1.GetOrchestratorInCluster(op.profileMap)
 
 	return util.CheckTruthy(inCluster), nil
 }

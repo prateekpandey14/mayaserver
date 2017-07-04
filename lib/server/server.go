@@ -1,14 +1,11 @@
 package server
 
 import (
-	//"fmt"
 	"io"
 	"log"
 	"sync"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
-	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
-	v1nomad "github.com/openebs/mayaserver/lib/api/v1/nomad"
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	"github.com/openebs/mayaserver/lib/orchprovider/k8s"
@@ -70,80 +67,42 @@ func NewMayaApiServer(config *config.MayaConfig, logOutput io.Writer) (*MayaApiS
 // orchestrator. User initiated requests requiring specific variants should be
 // initialized at runtime.
 func (ms *MayaApiServer) BootstrapPlugins() error {
+	// Register persistent volume provisioner(s)
+	isJivaProvisionerReg := volumeprovisioner.HasVolumeProvisioner(v1.JivaVolumeProvisioner)
+	if !isJivaProvisionerReg {
+		volumeprovisioner.RegisterVolumeProvisioner(
+			// Registration entry when Jiva is a persistent volume provisioner
+			v1.JivaVolumeProvisioner,
 
-	// TODO
-	// Use MayaConfig
-	// Fetch the names of volume plugins to be initialized
-	// Iterate over the volumes:
-	//  0. Fetch the config file location of orchestrator
-	//  1. Initialize volume plugin's orchestrator
-	//  2. Build an aspect that points to above orchestrator
-	//  3. Fetch the config file location of volume plugin
-	//  4. Initialize volume plugin
-
-	// Typically the orchestrator should be initialized with its
-	// region property. However, if initialization logic is not provided with
-	// specific region then a default region specific to orchestrator is taken into
-	// account.
-	// TODO
-	// Get this default value w.r.t orchestrator from mayaserver config file
-	// e.g.
-	//    NOMAD_REGION = global
-	//    K8S_REGION = us-east-1
-	// TODO
-	// There may be cases where user initiated requests might specify region.
-	// In those cases, a separate volumeplugin should be initialized with that
-	// specific region.
-	//
-	// NOTE:
-	//    In other words a particular volume plugin may have two
-	// running instances pointing to different regions.
-
-	// TODO
-	// Deprecate
-	// Old way to register
-	found := orchprovider.IsOrchProvider(v1nomad.DefaultNomadPluginName)
-	if !found {
-		orchprovider.RegisterOrchProvider(
-			// A variant of nomad orchestrator plugin
-			v1nomad.DefaultNomadPluginName,
-			// Below is a functional implementation that holds the initialization
-			// logic of nomad orchestrator plugin
-			func(name string, region string, config io.Reader) (orchprovider.OrchestratorInterface, error) {
-				return nomad.NewNomadOrchestrator(name, region, config)
+			// Below is a callback function that creates a new instance of jiva as persistent
+			// volume provisioner
+			func(label, name string) (volumeprovisioner.VolumeInterface, error) {
+				return jiva.NewJivaProvisioner(label, name)
 			})
 	}
 
-	orchestrator, err := orchprovider.InitOrchProvider(v1nomad.DefaultNomadPluginName, v1nomad.DefaultNomadRegionName, v1nomad.DefaultNomadConfigFile)
-	if err != nil {
-		return err
-	}
-
-	// Set the jiva aspects with its defaults
-	jivaAspect := &jiva.JivaStorNomadAspect{
-		Nomad: orchestrator,
-
-		// The default datacenter. Typically user initiated actions will specify
-		// a particular datacenter. This property is useful in cases where the actions
-		// or requests do not specify a datacenter value.
-		Datacenter: v1jiva.DefaultJivaDataCenter,
-	}
-
-	_, err = volumeprovisioner.InitVolumePlugin(v1jiva.DefaultJivaVolumePluginName, "", jivaAspect)
-	if err != nil {
-		return err
-	}
-
-	// New way to register orchestrator(s)
+	// Register orchestrator(s)
 	isK8sOrchReg := orchprovider.HasOrchestrator(v1.K8sOrchestrator)
 	if !isK8sOrchReg {
 		orchprovider.RegisterOrchestrator(
-			// Registration entry when Kubernetes is the orchestrator provider plugin
+			// Registration entry when Kubernetes is the orchestrator provider
 			v1.K8sOrchestrator,
 			// Below is a callback function that creates a new instance of Kubernetes
 			// orchestration provider
 			func(label v1.NameLabel, name v1.OrchProviderRegistry) (orchprovider.OrchestratorInterface, error) {
 				return k8s.NewK8sOrchestrator(label, name)
+			})
+	}
+
+	isNomadOrchReg := orchprovider.HasOrchestrator(v1.NomadOrchestrator)
+	if !isNomadOrchReg {
+		orchprovider.RegisterOrchestrator(
+			// Registration entry when Nomad is the orchestrator provider
+			v1.NomadOrchestrator,
+			// Below is a callback function that creates a new instance of Nomad
+			// orchestration provider
+			func(label v1.NameLabel, name v1.OrchProviderRegistry) (orchprovider.OrchestratorInterface, error) {
+				return nomad.NewNomadOrchestrator(label, name)
 			})
 	}
 

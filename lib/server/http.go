@@ -15,12 +15,10 @@ import (
 	"time"
 
 	"github.com/NYTimes/gziphandler"
+	"github.com/ghodss/yaml"
 	"github.com/openebs/mayaserver/lib/config"
 	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
-	//"gopkg.in/yaml.v2"
-	"github.com/ghodss/yaml"
-	//"github.com/openebs/mayaserver/lib/volume"
 )
 
 const (
@@ -129,23 +127,9 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 	// NOTE - The original handler is passed as a func to the wrap method
 	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
 
-	// Can be a GET, PUT, or POST.
-	// Handler has the intelligence to cater to various http methods.
-	//s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VolumesRequest))
-
-	// Request w.r.t to a single volume entity is handled here
-	//s.mux.HandleFunc("/latest/volume/", s.wrap(s.VolumeSpecificRequest))
-
 	// Request w.r.t to a single VSM entity is handled here
-	//s.mux.HandleFunc("/latest/vsms/", s.wrap(s.VSMSpecificRequest))
 	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VSMSpecificRequest))
 }
-
-// GetVolumePlugin is a pass through function that provides a particular
-// volume plugin
-//func (s *HTTPServer) GetVolumePlugin(name string) (volume.VolumeInterface, error) {
-//	return s.maya.GetVolumePlugin(name)
-//}
 
 // HTTPCodedError is used to provide the HTTP error code
 type HTTPCodedError interface {

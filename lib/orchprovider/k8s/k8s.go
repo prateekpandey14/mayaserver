@@ -11,7 +11,6 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	//"k8s.io/apimachinery/pkg/labels"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
@@ -28,20 +27,8 @@ import (
 //
 // NOTE:
 //    This function is executed once per application
-func init() {
-	orchprovider.RegisterOrchestrator(
-		// Registration entry when Kubernetes is the orchestrator provider plugin
-		//
-		// NOTE:
-		//    This value remains same for all instances of Kubernetes
-		v1.K8sOrchestrator,
-
-		// Below is a callback function that creates a new instance of Kubernetes
-		// orchestration provider
-		func(label v1.NameLabel, name v1.OrchProviderRegistry) (orchprovider.OrchestratorInterface, error) {
-			return NewK8sOrchestrator(label, name)
-		})
-}
+//func init() {
+//}
 
 // K8sOrchestrator is a concrete implementation of following
 // interfaces:
@@ -157,8 +144,8 @@ func (k *k8sOrchestrator) StorageOps() (orchprovider.StorageOps, bool) {
 	return k, true
 }
 
-// AddStorage will add persistent volume running as containers
-//func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolumeList, error) {
+// AddStorage will add persistent volume running as containers. In OpenEBS
+// terms AddStorage will add a VSM.
 func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
 
 	// TODO
@@ -552,18 +539,18 @@ func (k *k8sOrchestrator) ListStorage(volProProfile volProfile.VolumeProvisioner
 //
 // StoragePlacements is not supported by k8sOrchestrator
 // This is an implementation of the orchprovider.OrchestratorInterface interface.
-func (k *k8sOrchestrator) StoragePlacements() (orchprovider.StoragePlacements, bool) {
-	return nil, false
-}
+//func (k *k8sOrchestrator) StoragePlacements() (orchprovider.StoragePlacements, bool) {
+//return nil, false
+//}
 
 // TODO
 // Deprecate
 //
 // NetworkPlacements is not supported by k8sOrchestrator.
 // This is an implementation of the orchprovider.OrchestratorInterface interface.
-func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, bool) {
-	return nil, false
-}
+//func (k *k8sOrchestrator) NetworkPlacements() (orchprovider.NetworkPlacements, bool) {
+//return nil, false
+//}
 
 // createControllerDeployment creates a persistent volume controller deployment in
 // kubernetes
