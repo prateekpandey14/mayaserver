@@ -8,61 +8,10 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/openebs/mayaserver/lib/nethelper"
-	"github.com/openebs/mayaserver/lib/util"
 )
 
-// DefaultNetworkSubnet will fetch the default value of orchestration provider
-// network subnet.
-//func DefaultNetworkSubnet() string {
-//	return string(OrchCNSubnetDef)
-//}
-
-// ReqNetworking will fetch the value specified against persistent volume networking
-// support if available otherwise will return blank.
-//
-// NOTE:
-//    This utility function does not validate & just returns if not capable of
-// performing
-func ReqNetworking(profileMap map[string]string) string {
-	if profileMap == nil {
-		return ""
-	}
-
-	// Extract networking support i.e. is networking required
-	return profileMap[string(PVPReqNetworkingLbl)]
-}
-
-// DefaultReqNetworking will fetch the default flag w.r.t persistent volume
-// networking support
-//
-// NOTE:
-//    This function need not bother about any validations
-func DefaultReqNetworking() bool {
-	return util.CheckTruthy(string(PVPReqNetworkingDef))
-}
-
-// ReqReplica will fetch the value specified against persistent volume replica
-// support if available otherwise will return blank.
-//
-// NOTE:
-//    This utility function does not validate & just returns if not capable of
-// performing
-func ReqReplica(profileMap map[string]string) string {
-	if profileMap == nil {
-		return ""
-	}
-
-	// Extract replica support i.e. is replica required
-	return profileMap[string(PVPReqReplicaLbl)]
-}
-
-// DefaultReqReplica will fetch the default value for persistent volume
-// replica support.
-func DefaultReqReplica() bool {
-	// Extract replica support i.e. is replica required
-	return util.CheckTruthy(string(PVPReqReplicaDef))
-}
-
+// GetPVPControllerCountInt gets the not nil value of PVP's VSM Controller count
+// in int
 func GetPVPControllerCountInt(profileMap map[string]string) (int, error) {
 	return strconv.Atoi(GetPVPControllerCount(profileMap))
 }

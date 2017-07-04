@@ -174,12 +174,6 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 		return nil, err
 	}
 
-	// Create the k8s deployment of vsm replica
-	isRequested := volProProfile.ReqReplica()
-	if !isRequested {
-		return nil, nil
-	}
-
 	_, err = k.createReplicaDeployment(volProProfile, clusterIP)
 	if err != nil {
 		k.DeleteStorage(volProProfile)

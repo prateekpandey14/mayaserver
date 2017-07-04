@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/openebs/mayaserver/lib/api/v1"
-	"github.com/openebs/mayaserver/lib/util"
 )
 
 // VolumeProvisionerProfile abstracts & exposes a persistent volume provisioner's
@@ -58,9 +57,6 @@ type VolumeProvisionerProfile interface {
 
 	// Get the IP addresses that needs to be assigned against the controller(s)
 	ControllerIPs() ([]string, error)
-
-	// If replica(s) are supported by the persistent volume provisioner
-	ReqReplica() bool
 
 	// Gets the replica's image e.g. docker image version. The second return value
 	// indicates if image based replica is supported or not.
@@ -254,19 +250,6 @@ func (pp *pvcVolProProfile) ControllerImage() (string, bool, error) {
 	return cImg, true, nil
 }
 
-// ReqReplica indicates if replica(s) are required by the persistent volume
-// provisioner
-func (pp *pvcVolProProfile) ReqReplica() bool {
-	// Extract the replica truthiness (i.e. is replica required) from pvc
-	reqReplica := v1.ReqReplica(pp.pvc.Labels)
-
-	if reqReplica == "" {
-		return v1.DefaultReqReplica()
-	}
-
-	return util.CheckTruthy(reqReplica)
-}
-
 // ReplicaImage gets the replica's image currently its docker image label.
 func (pp *pvcVolProProfile) ReplicaImage() (string, bool, error) {
 	// Extract the replica image from pvc
@@ -291,20 +274,6 @@ func (pp *pvcVolProProfile) StorageSize() (string, error) {
 func (pp *pvcVolProProfile) ReplicaCount() (int, error) {
 	// Extract the replica count from pvc
 	return v1.GetPVPReplicaCountInt(pp.pvc.Labels)
-}
-
-// ReqNetworking indicates if any networking related operations are required to
-// be executed by persistent volume provisioner
-func (pp *pvcVolProProfile) ReqNetworking() bool {
-	// Extract the networking truthiness (i.e. is networking operations required)
-	// from pvc
-	reqNet := v1.ReqNetworking(pp.pvc.Labels)
-	// Default is true
-	if reqNet == "" {
-		return v1.DefaultReqNetworking()
-	}
-
-	return util.CheckTruthy(reqNet)
 }
 
 // ControllerIPs gets the IP addresses that needs to be assigned against the
