@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/openebs/mayaserver/lib/config"
-	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
 )
 
@@ -101,23 +100,6 @@ func TestSetLastContact(t *testing.T) {
 	resp := httptest.NewRecorder()
 	setLastContact(resp, 123456*time.Microsecond)
 	header := resp.Header().Get("X-Maya-LastContact")
-	if header != "123" {
-		t.Fatalf("Bad: %v", header)
-	}
-}
-
-func TestSetMeta(t *testing.T) {
-	qm := structs.QueryMeta{
-		Index:       1000,
-		LastContact: 123456 * time.Microsecond,
-	}
-	resp := httptest.NewRecorder()
-	setMeta(resp, &qm)
-	header := resp.Header().Get("X-Maya-Index")
-	if header != "1000" {
-		t.Fatalf("Bad: %v", header)
-	}
-	header = resp.Header().Get("X-Maya-LastContact")
 	if header != "123" {
 		t.Fatalf("Bad: %v", header)
 	}
@@ -223,127 +205,6 @@ func testPrettyPrint(pretty string, prettyFmt bool, t *testing.T) {
 
 	if !bytes.Equal(expected.Bytes(), actual) {
 		t.Fatalf("bad:\nexpected:\t%q\n\nactual:\t\t%q", string(expected.Bytes()), string(actual))
-	}
-}
-
-func TestParseWait(t *testing.T) {
-
-	var qo structs.QueryOptions
-
-	s := makeHTTPTestServer(t, nil)
-	defer s.Cleanup()
-
-	resp := httptest.NewRecorder()
-	handler := func(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-		return "noop", nil
-	}
-
-	req, err := http.NewRequest("GET",
-		"/v1/kv/key?wait=60s&index=1000", nil)
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	s.Server.wrap(handler)(resp, req)
-
-	if d := parseWait(resp, req, &qo); d {
-		t.Fatalf("unexpected done")
-	}
-
-	if qo.MinQueryIndex != 1000 {
-		t.Fatalf("Bad query index: %v", qo)
-	}
-
-	if qo.MaxQueryTime != 60*time.Second {
-		t.Fatalf("Bad query time: %v", qo)
-	}
-}
-
-func TestParseWait_InvalidTime(t *testing.T) {
-
-	var qo structs.QueryOptions
-
-	s := makeHTTPTestServer(t, nil)
-	defer s.Cleanup()
-
-	resp := httptest.NewRecorder()
-
-	req, err := http.NewRequest("GET",
-		"/v1/kv/key?wait=60foo&index=1000", nil)
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	if d := parseWait(resp, req, &qo); !d {
-		t.Fatalf("expected done")
-	}
-
-	if resp.Code != 400 {
-		t.Fatalf("bad http code: expected code: 400, got code: %v", resp.Code)
-	}
-}
-
-func TestParseWait_InvalidIndex(t *testing.T) {
-
-	var qo structs.QueryOptions
-
-	s := makeHTTPTestServer(t, nil)
-	defer s.Cleanup()
-
-	resp := httptest.NewRecorder()
-	//handler := func(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-	//	return "noop", nil
-	//}
-
-	req, err := http.NewRequest("GET",
-		"/v1/kv/key?wait=60s&index=foo", nil)
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	//s.Server.wrap(handler)(resp, req)
-
-	if d := parseWait(resp, req, &qo); !d {
-		t.Fatalf("expected done")
-	}
-
-	if resp.Code != 400 {
-		t.Fatalf("bad http code: expected: 400, got: %v", resp.Code)
-	}
-}
-
-func TestParseConsistency(t *testing.T) {
-	var qo structs.QueryOptions
-
-	req, err := http.NewRequest("GET",
-		"/v1/kv/key?stale", nil)
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	parseConsistency(req, &qo)
-
-	if !qo.AllowStale {
-		t.Fatalf("Bad: %v", qo)
-	}
-
-	// reset the query options
-	qo = structs.QueryOptions{}
-	req, err = http.NewRequest("GET",
-		"/v1/kv/key?consistent", nil)
-
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-
-	parseConsistency(req, &qo)
-
-	if qo.AllowStale {
-		t.Fatalf("Bad: %v", qo)
 	}
 }
 

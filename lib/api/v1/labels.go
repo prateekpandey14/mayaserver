@@ -2,57 +2,19 @@ package v1
 
 // TODO
 // Deprecate
-// A type that acts on an infrastructure level i.e. orchestrator hosts
-type ContainerNetworkingLbl string
-
-// TODO
-// Deprecate
 const (
-//CNTypeLbl            ContainerNetworkingLbl = "cn.openebs.io/type"
-//CNNetworkCIDRAddrLbl ContainerNetworkingLbl = "cn.openebs.io/network-cidr-addr"
-//CNSubnetLbl          ContainerNetworkingLbl = "cn.openebs.io/subnet"
-//CNInterfaceLbl       ContainerNetworkingLbl = "cn.openebs.io/interface"
-)
-
-// TODO
-// Deprecate
-// A type that acts on an infrastructure level i.e. orchestrator hosts
-//type ContainerStorageLbl string
-
-// TODO
-// Deprecate
-const (
-//CSPersistenceLocationLbl ContainerStorageLbl = "cs.openebs.io/persistence-location"
-//CSReplicaCountLbl        ContainerStorageLbl = "cs.openebs.io/replica-count"
+//VolumePluginNamePrefix string = "name.plugin.volume.openebs.io/"
 )
 
 // TODO
 // Deprecate
 const (
-	VolumePluginNamePrefix string = "name.plugin.volume.openebs.io/"
-)
-
-// TODO
-// Deprecate
-const (
-	DefaultOrchestratorConfigPath string = "/etc/mayaserver/orchprovider/"
+//DefaultOrchestratorConfigPath string = "/etc/mayaserver/orchprovider/"
 )
 
 const (
-	JivaNomadPlacementSpecs string = "placement.specs.openebs.io/jnp-specs"
-	JivaK8sPlacementSpecs   string = "placement.specs.openebs.io/jk8sp-specs"
-)
-
-// TODO
-//    Need to standardize on the label's value.
-//type RequestsLbl string
-
-const (
-// Old way to labels
-// TODO
-// Deprecate
-//RegionLbl     RequestsLbl = "requests.openebs.io/region"
-//DatacenterLbl RequestsLbl = "requests.openebs.io/dc"
+//JivaNomadPlacementSpecs string = "placement.specs.openebs.io/jnp-specs"
+//JivaK8sPlacementSpecs   string = "placement.specs.openebs.io/jk8sp-specs"
 )
 
 type NomadEnvironmentVariable string
@@ -501,6 +463,10 @@ const (
 	// JivaReplicaPortThreeDef is used to provide port for jiva based persistent
 	// volume replica
 	JivaReplicaPortThreeDef JivaDefaults = "9504"
+
+	// JivaBackEndIPPrefixLbl is used to provide the label for VSM replica IP on
+	// Nomad
+	JivaBackEndIPPrefixLbl JivaDefaults = "JIVA_REP_IP_"
 
 	// JivaPersistentPathDef is used to set default value for
 	// persistent volume's persist path

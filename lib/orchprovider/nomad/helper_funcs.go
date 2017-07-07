@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/nomad/helper"
 	"github.com/hashicorp/nomad/nomad/structs"
 	"github.com/openebs/mayaserver/lib/api/v1"
-	v1jiva "github.com/openebs/mayaserver/lib/api/v1/jiva"
 )
 
 // Get the job name from a persistent volume claim
@@ -266,7 +265,7 @@ func setBEIPs(beEnv, jobMeta map[string]string, jivaBeIPArr []string, iJivaBECou
 	var k, v string
 
 	for i := 0; i < iJivaBECount; i++ {
-		k = string(v1jiva.JivaBackEndIPPrefixLbl) + strconv.Itoa(i)
+		k = string(v1.JivaBackEndIPPrefixLbl) + strconv.Itoa(i)
 		v = jivaBeIPArr[i]
 		beEnv[k] = v
 	}

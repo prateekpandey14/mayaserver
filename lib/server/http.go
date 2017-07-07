@@ -17,7 +17,6 @@ import (
 	"github.com/NYTimes/gziphandler"
 	"github.com/ghodss/yaml"
 	"github.com/openebs/mayaserver/lib/config"
-	"github.com/openebs/mayaserver/structs"
 	"github.com/ugorji/go/codec"
 )
 
@@ -274,10 +273,10 @@ func setLastContact(resp http.ResponseWriter, last time.Duration) {
 }
 
 // setMeta is used to set the query response meta data
-func setMeta(resp http.ResponseWriter, qm *structs.QueryMeta) {
-	setIndex(resp, qm.Index)
-	setLastContact(resp, qm.LastContact)
-}
+//func setMeta(resp http.ResponseWriter, qm *structs.QueryMeta) {
+//setIndex(resp, qm.Index)
+//setLastContact(resp, qm.LastContact)
+//}
 
 // setHeaders is used to set canonical response header fields
 func setHeaders(resp http.ResponseWriter, headers map[string]string) {
@@ -288,44 +287,44 @@ func setHeaders(resp http.ResponseWriter, headers map[string]string) {
 
 // parseWait is used to parse the ?wait and ?index query params
 // Returns true on error
-func parseWait(resp http.ResponseWriter, req *http.Request, qo *structs.QueryOptions) bool {
-	query := req.URL.Query()
-	if wait := query.Get("wait"); wait != "" {
-		dur, err := time.ParseDuration(wait)
-		if err != nil {
-			resp.WriteHeader(400)
-			resp.Write([]byte("Invalid wait time"))
-			return true
-		}
-		qo.MaxQueryTime = dur
-	}
-	if idx := query.Get("index"); idx != "" {
-		index, err := strconv.ParseUint(idx, 10, 64)
-		if err != nil {
-			resp.WriteHeader(400)
-			resp.Write([]byte("Invalid index"))
-			return true
-		}
-		qo.MinQueryIndex = index
-	}
-	return false
-}
+//func parseWait(resp http.ResponseWriter, req *http.Request, qo *structs.QueryOptions) bool {
+//	query := req.URL.Query()
+//	if wait := query.Get("wait"); wait != "" {
+//		dur, err := time.ParseDuration(wait)
+//		if err != nil {
+//			resp.WriteHeader(400)
+//			resp.Write([]byte("Invalid wait time"))
+//			return true
+//		}
+//		qo.MaxQueryTime = dur
+//	}
+//	if idx := query.Get("index"); idx != "" {
+//		index, err := strconv.ParseUint(idx, 10, 64)
+//		if err != nil {
+//			resp.WriteHeader(400)
+//			resp.Write([]byte("Invalid index"))
+//			return true
+//		}
+//		qo.MinQueryIndex = index
+//	}
+//	return false
+//}
 
 // parseConsistency is used to parse the ?stale query params.
-func parseConsistency(req *http.Request, qo *structs.QueryOptions) {
-	query := req.URL.Query()
-	if _, ok := query["stale"]; ok {
-		qo.AllowStale = true
-	}
-}
+//func parseConsistency(req *http.Request, qo *structs.QueryOptions) {
+//	query := req.URL.Query()
+//	if _, ok := query["stale"]; ok {
+//		qo.AllowStale = true
+//	}
+//}
 
 // parsePrefix is used to parse the ?prefix query param
-func parsePrefix(req *http.Request, qo *structs.QueryOptions) {
-	query := req.URL.Query()
-	if prefix := query.Get("prefix"); prefix != "" {
-		qo.Prefix = prefix
-	}
-}
+//func parsePrefix(req *http.Request, qo *structs.QueryOptions) {
+//	query := req.URL.Query()
+//	if prefix := query.Get("prefix"); prefix != "" {
+//		qo.Prefix = prefix
+//	}
+//}
 
 // parseRegion is used to parse the ?region query param
 func (s *HTTPServer) parseRegion(req *http.Request, r *string) {
@@ -337,9 +336,9 @@ func (s *HTTPServer) parseRegion(req *http.Request, r *string) {
 }
 
 // parse is a convenience method for endpoints that need to parse multiple flags
-func (s *HTTPServer) parse(resp http.ResponseWriter, req *http.Request, r *string, qo *structs.QueryOptions) bool {
-	s.parseRegion(req, r)
-	parseConsistency(req, qo)
-	parsePrefix(req, qo)
-	return parseWait(resp, req, qo)
-}
+//func (s *HTTPServer) parse(resp http.ResponseWriter, req *http.Request, r *string, qo *structs.QueryOptions) bool {
+//s.parseRegion(req, r)
+//parseConsistency(req, qo)
+//parsePrefix(req, qo)
+//return parseWait(resp, req, qo)
+//}

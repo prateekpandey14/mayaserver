@@ -13,19 +13,13 @@
 // a volume in OpenEBS can be considered as a StoragePod.
 package v1
 
-import (
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-)
-
 // PersistentVolumeClaim is a user's REQUEST for and CLAIM to a persistent volume
 type PersistentVolumeClaim struct {
-	metav1.TypeMeta `json:",inline"`
+	TypeMeta `json:",inline"`
 	// Standard object's metadata.
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// Spec defines the desired characteristics of a volume requested by a pod author.
 	// More info: http://kubernetes.io/docs/user-guide/persistent-volumes#persistentvolumeclaims
@@ -41,11 +35,11 @@ type PersistentVolumeClaim struct {
 
 // PersistentVolumeClaimList is a list of PersistentVolumeClaim items.
 type PersistentVolumeClaimList struct {
-	metav1.TypeMeta `json:",inline"`
+	TypeMeta `json:",inline"`
 	// Standard list metadata.
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
 	// +optional
-	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 	// A list of persistent volume claims.
 	// More info: http://kubernetes.io/docs/user-guide/persistent-volumes#persistentvolumeclaims
 	Items []PersistentVolumeClaim `json:"items" protobuf:"bytes,2,rep,name=items"`
@@ -60,7 +54,7 @@ type PersistentVolumeClaimSpec struct {
 	AccessModes []PersistentVolumeAccessMode `json:"accessModes,omitempty" protobuf:"bytes,1,rep,name=accessModes,casttype=PersistentVolumeAccessMode"`
 	// A label query over volumes to consider for binding.
 	// +optional
-	Selector *metav1.LabelSelector `json:"selector,omitempty" protobuf:"bytes,4,opt,name=selector"`
+	Selector *LabelSelector `json:"selector,omitempty" protobuf:"bytes,4,opt,name=selector"`
 	// Resources represents the minimum resources the volume should have.
 	// More info: http://kubernetes.io/docs/user-guide/persistent-volumes#resources
 	// +optional
@@ -104,9 +98,9 @@ const (
 // PersistentVolume represents a named volume in OpenEBS that may be accessed
 // by any container, VM, etc. This represents a CREATED resource.
 type PersistentVolume struct {
-	metav1.TypeMeta `json:",inline"`
+	TypeMeta `json:",inline"`
 	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	//Spec defines a persistent volume owned by OpenEBS cluster
 	// +optional
@@ -119,12 +113,12 @@ type PersistentVolume struct {
 
 // PersistentVolumeList is a list of PersistentVolume items.
 type PersistentVolumeList struct {
-	metav1.TypeMeta `json:",inline"`
+	TypeMeta `json:",inline"`
 
 	// Standard list metadata.
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#types-kinds
 	// +optional
-	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
 	// List of persistent volumes.
 	// More info: http://kubernetes.io/docs/user-guide/persistent-volumes
@@ -282,7 +276,7 @@ type ResourceRequirements struct {
 type ResourceName string
 
 // ResourceList is a set of (resource name, quantity) pairs.
-type ResourceList map[ResourceName]resource.Quantity
+type ResourceList map[ResourceName]Quantity
 
 // ObjectReference contains enough information to let you inspect or modify the referred object.
 type ObjectReference struct {
@@ -293,7 +287,7 @@ type ObjectReference struct {
 	// +optional
 	Name string
 	// +optional
-	UID types.UID
+	UID string
 	// +optional
 	APIVersion string
 	// +optional

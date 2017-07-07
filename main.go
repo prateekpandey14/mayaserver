@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/hashicorp/consul/lib"
+	//"github.com/hashicorp/consul/lib"
 	"github.com/mitchellh/cli"
 )
 
@@ -14,7 +14,7 @@ var (
 )
 
 func init() {
-	lib.SeedMathRand()
+	//lib.SeedMathRand()
 }
 
 func main() {
