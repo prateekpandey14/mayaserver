@@ -178,6 +178,11 @@
 			"revision": "d520615e531a6bf3fb69406b9eba718261285ec8"
 		},
 		{
+			"checksumSHA1": "DHgZ2o3MR8CjlrzkgrjlbyvK/cw=",
+			"path": "github.com/hashicorp/consul/api",
+			"revision": "a9455cd4fc2809570ff1855c37d6ffc2449bd42f"
+		},
+		{
 			"checksumSHA1": "cdOCt0Yb+hdErz8NAQqayxPmRsY=",
 			"path": "github.com/hashicorp/errwrap",
 			"revision": "7554cd9344cec97297fa6649b055a8c98c2a1e55"
@@ -283,9 +288,19 @@
 			"revision": "8e6d77ebd5182be8f905882302fb6b98254e7042"
 		},
 		{
+			"checksumSHA1": "qUhE2eX1fgrxiZrG62LYR4E5cZo=",
+			"path": "github.com/hashicorp/nomad/nomad/structs",
+			"revision": "8e6d77ebd5182be8f905882302fb6b98254e7042"
+		},
+		{
 			"checksumSHA1": "wpirHJV/6VEbbD+HyAP2/6Xc0ek=",
 			"path": "github.com/hashicorp/raft",
 			"revision": "aaad9f10266e089bd401e7a6487651a69275641b"
+		},
+		{
+			"checksumSHA1": "E3Xcanc9ouQwL+CZGOUyA/+giLg=",
+			"path": "github.com/hashicorp/serf/coordinate",
+			"revision": "b9642a47e6139e50548b6f14588a1a3c0839660a"
 		},
 		{
 			"checksumSHA1": "bWNPOpuddEOhaxJ23P2q5N8JBu4=",
