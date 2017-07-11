@@ -32,16 +32,18 @@ bin:
 init: bootstrap deps
 
 deps:
-	rm -rf vendor/github.com/
+	rm -rf vendor/github.com/ && \
+  rm -rf vendor/cloud.google.com/ && \
+  rm -rf vendor/golang.org/ && \
+  rm -rf vendor/gopkg.in/ && \
+  rm -rf vendor/k8s.io/
 	@echo "--> Sync with vendored repositories." ;
 	@echo "--> Run this only when there is a change in vendor dependencies." ;
 	@echo "--> Please wait, this may take a while..." ;
 	@govendor sync
-	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
 
 sync:
 	@govendor sync
-	cp -r ./vendor/github.com/kubernetes/kubernetes/staging/src/k8s.io/ ./vendor/
 
 clean:
 	rm -rf bin

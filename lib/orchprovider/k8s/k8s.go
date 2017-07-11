@@ -13,22 +13,11 @@ import (
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
+	//k8sUnversioned "k8s.io/client-go/pkg/api/unversioned"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sApiV1 "k8s.io/client-go/pkg/api/v1"
 	k8sApisExtnsBeta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
-
-// TODO
-// NOTE:
-//    This does not work. The bootstraping is done in server/server.go
-// If self-registration is not feasible then remove this altogether.
-//
-// The registration logic for the kubernetes as orchestrator provider plugin
-//
-// NOTE:
-//    This function is executed once per application
-//func init() {
-//}
 
 // K8sOrchestrator is a concrete implementation of following
 // interfaces:
@@ -255,7 +244,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	if rDeploys != nil && len(rDeploys.Items) > 0 {
 		hasAtleastOneVSMObj = true
 		for _, rd := range rDeploys.Items {
-			err = dOps.Delete(rd.Name, &k8sApiV1.DeleteOptions{
+			err = dOps.Delete(rd.Name, &metav1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
@@ -273,7 +262,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	if cDeploys != nil && len(cDeploys.Items) > 0 {
 		hasAtleastOneVSMObj = true
 		for _, cd := range cDeploys.Items {
-			err = dOps.Delete(cd.Name, &k8sApiV1.DeleteOptions{
+			err = dOps.Delete(cd.Name, &metav1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
@@ -291,7 +280,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	if rPods != nil && len(rPods.Items) > 0 {
 		hasAtleastOneVSMObj = true
 		for _, rPod := range rPods.Items {
-			err = pOps.Delete(rPod.Name, &k8sApiV1.DeleteOptions{
+			err = pOps.Delete(rPod.Name, &metav1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
@@ -309,7 +298,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	if cPods != nil && len(cPods.Items) > 0 {
 		hasAtleastOneVSMObj = true
 		for _, cPod := range cPods.Items {
-			err = pOps.Delete(cPod.Name, &k8sApiV1.DeleteOptions{
+			err = pOps.Delete(cPod.Name, &metav1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
@@ -327,7 +316,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	if cSvcs != nil && len(cSvcs.Items) > 0 {
 		hasAtleastOneVSMObj = true
 		for _, cSvc := range cSvcs.Items {
-			err = sOps.Delete(cSvc.Name, &k8sApiV1.DeleteOptions{
+			err = sOps.Delete(cSvc.Name, &metav1.DeleteOptions{
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
@@ -585,7 +574,7 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 	glog.Infof("Adding controller for VSM 'name: %s'", vsm)
 
 	deploy := &k8sApisExtnsBeta1.Deployment{
-		ObjectMeta: k8sApiV1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: vsm + string(v1.ControllerSuffix),
 			Labels: map[string]string{
 				string(v1.VSMSelectorKey):               vsm,
@@ -593,13 +582,13 @@ func (k *k8sOrchestrator) createControllerDeployment(volProProfile volProfile.Vo
 				string(v1.ControllerSelectorKey):        string(v1.JivaControllerSelectorValue),
 			},
 		},
-		TypeMeta: k8sUnversioned.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       string(v1.K8sKindDeployment),
 			APIVersion: string(v1.K8sDeploymentVersion),
 		},
 		Spec: k8sApisExtnsBeta1.DeploymentSpec{
 			Template: k8sApiV1.PodTemplateSpec{
-				ObjectMeta: k8sApiV1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						string(v1.VSMSelectorKey):        vsm,
 						string(v1.ControllerSelectorKey): string(v1.JivaControllerSelectorValue),
@@ -704,7 +693,7 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 	glog.Infof("Adding replica(s) for VSM 'name: %s'", vsm)
 
 	deploy := &k8sApisExtnsBeta1.Deployment{
-		ObjectMeta: k8sApiV1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: vsm + string(v1.ReplicaSuffix),
 			Labels: map[string]string{
 				string(v1.VSMSelectorKey):               vsm,
@@ -712,14 +701,14 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 				string(v1.ReplicaSelectorKey):           string(v1.JivaReplicaSelectorValue),
 			},
 		},
-		TypeMeta: k8sUnversioned.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       string(v1.K8sKindDeployment),
 			APIVersion: string(v1.K8sDeploymentVersion),
 		},
 		Spec: k8sApisExtnsBeta1.DeploymentSpec{
 			Replicas: v1.Replicas(rCount),
 			Template: k8sApiV1.PodTemplateSpec{
-				ObjectMeta: k8sApiV1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						string(v1.VSMSelectorKey):     vsm,
 						string(v1.ReplicaSelectorKey): string(v1.JivaReplicaSelectorValue),
@@ -868,7 +857,7 @@ func (k *k8sOrchestrator) getControllerServiceDetails(volProProfile volProfile.V
 		return "", "", err
 	}
 
-	svc, err := sOps.Get(vsm + string(v1.ControllerSuffix) + string(v1.ServiceSuffix))
+	svc, err := sOps.Get(vsm+string(v1.ControllerSuffix)+string(v1.ServiceSuffix), metav1.GetOptions{})
 	if err != nil {
 		return "", "", err
 	}
@@ -895,13 +884,13 @@ func (k *k8sOrchestrator) deleteService(name string, volProProfile volProfile.Vo
 		return err
 	}
 
-	return sOps.Delete(name, &k8sApiV1.DeleteOptions{})
+	return sOps.Delete(name, &metav1.DeleteOptions{})
 }
 
 // getControllerServices fetches the Controller Services
 func (k *k8sOrchestrator) getControllerServices(vsm string, serviceOps k8sCoreV1.ServiceInterface) (*k8sApiV1.ServiceList, error) {
 	// filter the VSM Controller Services(s)
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		// A list of comma separated key=value filters will filter the
 		// VSM Controller Service(s)
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ServiceSelectorKeyEquals) + string(v1.JivaServiceSelectorValue),
@@ -918,7 +907,7 @@ func (k *k8sOrchestrator) getControllerServices(vsm string, serviceOps k8sCoreV1
 // getControllerDeploys fetches the Controller Deployments
 func (k *k8sOrchestrator) getControllerDeploys(vsm string, deployOps k8sExtnsV1Beta1.DeploymentInterface) (*k8sApisExtnsBeta1.DeploymentList, error) {
 	// filter the VSM Controller Deployment(s)
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		// A list of comma separated key=value filters will filter the
 		// VSM Controller Deployment(s)
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ControllerSelectorKeyEquals) + string(v1.JivaControllerSelectorValue),
@@ -935,7 +924,7 @@ func (k *k8sOrchestrator) getControllerDeploys(vsm string, deployOps k8sExtnsV1B
 // getReplicaDeploys fetches the Replica Deployments
 func (k *k8sOrchestrator) getReplicaDeploys(vsm string, deployOps k8sExtnsV1Beta1.DeploymentInterface) (*k8sApisExtnsBeta1.DeploymentList, error) {
 	// filter the VSM Replica Deployment(s)
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		// A list of comma separated key=value filters will filter the
 		// VSM Replica Deployment(s)
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ReplicaSelectorKeyEquals) + string(v1.JivaReplicaSelectorValue),
@@ -952,7 +941,7 @@ func (k *k8sOrchestrator) getReplicaDeploys(vsm string, deployOps k8sExtnsV1Beta
 // getControllerPods fetches the Controller Pods
 func (k *k8sOrchestrator) getControllerPods(vsm string, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
 	// filter the VSM Controller Pod(s)
-	pOpts := k8sApiV1.ListOptions{
+	pOpts := metav1.ListOptions{
 		// A list of comma separated key=value filters will filter the
 		// VSM Controller Pod(s)
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ControllerSelectorKeyEquals) + string(v1.JivaControllerSelectorValue),
@@ -969,7 +958,7 @@ func (k *k8sOrchestrator) getControllerPods(vsm string, podOps k8sCoreV1.PodInte
 // getReplicaPods fetches the Replica Pods
 func (k *k8sOrchestrator) getReplicaPods(vsm string, podOps k8sCoreV1.PodInterface) (*k8sApiV1.PodList, error) {
 	// filter the VSM Replica Pod(s)
-	pOpts := k8sApiV1.ListOptions{
+	pOpts := metav1.ListOptions{
 		// A list of comma separated key=value filters will filter the
 		// VSM Replica Pod(s)
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm + "," + string(v1.ReplicaSelectorKeyEquals) + string(v1.JivaReplicaSelectorValue),
@@ -1041,7 +1030,7 @@ func (k *k8sOrchestrator) getDeployment(deployName string, volProProfile volProf
 		return nil, err
 	}
 
-	return dOps.Get(deployName)
+	return dOps.Get(deployName, metav1.GetOptions{})
 }
 
 // getDeploymentList fetches the deployments associated with the provided VSM name
@@ -1072,7 +1061,7 @@ func (k *k8sOrchestrator) getDeploymentList(vsm string, volProProfile volProfile
 		return nil, err
 	}
 
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		LabelSelector: string(v1.VSMSelectorKeyEquals) + vsm,
 	}
 
@@ -1104,7 +1093,7 @@ func (k *k8sOrchestrator) getVSMDeployments(volProProfile volProfile.VolumeProvi
 	}
 
 	// filter the VSM deployments only
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		LabelSelector: string(v1.VolumeProvisionerSelectorKey) + string(v1.SelectorEquals) + string(v1.JivaVolumeProvisionerSelectorValue),
 	}
 
@@ -1136,7 +1125,7 @@ func (k *k8sOrchestrator) getVSMServices(volProProfile volProfile.VolumeProvisio
 	}
 
 	// filter the VSM services only
-	lOpts := k8sApiV1.ListOptions{
+	lOpts := metav1.ListOptions{
 		LabelSelector: string(v1.VolumeProvisionerSelectorKey) + string(v1.SelectorEquals) + string(v1.JivaVolumeProvisionerSelectorValue),
 	}
 

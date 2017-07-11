@@ -9,15 +9,16 @@ import (
 	"github.com/openebs/mayaserver/lib/api/v1"
 	"github.com/openebs/mayaserver/lib/orchprovider"
 	volProfile "github.com/openebs/mayaserver/lib/profile/volumeprovisioner"
-	//k8sApiMetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	types "k8s.io/apimachinery/pkg/types"
+	watch "k8s.io/apimachinery/pkg/watch"
 	k8sCoreV1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	k8sExtnsV1Beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
-	k8sApi "k8s.io/client-go/pkg/api"
+	//k8sApi "k8s.io/client-go/pkg/api"
 	k8sApiv1 "k8s.io/client-go/pkg/api/v1"
 	k8sApisExtnsV1Beta1 "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	policy "k8s.io/client-go/pkg/apis/policy/v1beta1"
-	watch "k8s.io/client-go/pkg/watch"
 	"k8s.io/client-go/rest"
 )
 
@@ -300,24 +301,24 @@ func (m *mockPodOps) UpdateStatus(*k8sApiv1.Pod) (*k8sApiv1.Pod, error) {
 	return &k8sApiv1.Pod{}, nil
 }
 
-func (m *mockPodOps) Delete(name string, options *k8sApiv1.DeleteOptions) error {
+func (m *mockPodOps) Delete(name string, options *metav1.DeleteOptions) error {
 	return nil
 }
 
-func (m *mockPodOps) DeleteCollection(options *k8sApiv1.DeleteOptions, listOptions k8sApiv1.ListOptions) error {
+func (m *mockPodOps) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	return nil
 }
 
-func (m *mockPodOps) Get(name string) (*k8sApiv1.Pod, error) {
+func (m *mockPodOps) Get(name string, options metav1.GetOptions) (*k8sApiv1.Pod, error) {
 	return &k8sApiv1.Pod{}, nil
 }
 
 // List presents the mocked logic w.r.t pod list operation
-func (m *mockPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+func (m *mockPodOps) List(opts metav1.ListOptions) (*k8sApiv1.PodList, error) {
 
 	if m.injectVsm == "true" {
 		pod := k8sApiv1.Pod{
-			ObjectMeta: k8sApiv1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      m.vsmName,
 				Namespace: m.ns,
 				Labels: map[string]string{
@@ -334,11 +335,11 @@ func (m *mockPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) 
 	return nil, nil
 }
 
-func (m *mockPodOps) Watch(opts k8sApiv1.ListOptions) (watch.Interface, error) {
+func (m *mockPodOps) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, nil
 }
 
-func (m *mockPodOps) Patch(name string, pt k8sApi.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Pod, err error) {
+func (m *mockPodOps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Pod, err error) {
 	return &k8sApiv1.Pod{}, nil
 }
 
@@ -370,27 +371,27 @@ func (m *mockSvcOps) UpdateStatus(*k8sApiv1.Service) (*k8sApiv1.Service, error) 
 	return &k8sApiv1.Service{}, nil
 }
 
-func (m *mockSvcOps) Delete(name string, options *k8sApiv1.DeleteOptions) error {
+func (m *mockSvcOps) Delete(name string, options *metav1.DeleteOptions) error {
 	return nil
 }
 
-func (m *mockSvcOps) DeleteCollection(options *k8sApiv1.DeleteOptions, listOptions k8sApiv1.ListOptions) error {
+func (m *mockSvcOps) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	return nil
 }
 
-func (m *mockSvcOps) Get(name string) (*k8sApiv1.Service, error) {
+func (m *mockSvcOps) Get(name string, options metav1.GetOptions) (*k8sApiv1.Service, error) {
 	return &k8sApiv1.Service{}, nil
 }
 
-func (m *mockSvcOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.ServiceList, error) {
+func (m *mockSvcOps) List(opts metav1.ListOptions) (*k8sApiv1.ServiceList, error) {
 	return &k8sApiv1.ServiceList{}, nil
 }
 
-func (m *mockSvcOps) Watch(opts k8sApiv1.ListOptions) (watch.Interface, error) {
+func (m *mockSvcOps) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	return nil, nil
 }
 
-func (m *mockSvcOps) Patch(name string, pt k8sApi.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Service, err error) {
+func (m *mockSvcOps) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *k8sApiv1.Service, err error) {
 	return &k8sApiv1.Service{}, nil
 }
 
@@ -808,7 +809,7 @@ type errSvcGetSvcOps struct {
 }
 
 // Get returns an error
-func (m *errSvcGetSvcOps) Get(svc string) (*k8sApiv1.Service, error) {
+func (m *errSvcGetSvcOps) Get(svc string, options metav1.GetOptions) (*k8sApiv1.Service, error) {
 	return nil, fmt.Errorf("err-svc-get")
 }
 
@@ -860,9 +861,9 @@ type okSvcGetSvcOps struct {
 }
 
 // Get returns service that it receives without any error
-func (m *okSvcGetSvcOps) Get(svc string) (*k8sApiv1.Service, error) {
+func (m *okSvcGetSvcOps) Get(svc string, options metav1.GetOptions) (*k8sApiv1.Service, error) {
 	s := &k8sApiv1.Service{
-		ObjectMeta: k8sApiv1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "ok-svc-name",
 		},
 		Spec: k8sApiv1.ServiceSpec{
@@ -990,7 +991,7 @@ type errDeploymentListDeploymentOps struct {
 }
 
 // List retuns an error
-func (e *errDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+func (e *errDeploymentListDeploymentOps) List(opts metav1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
 	return nil, fmt.Errorf("err-deployment-list")
 }
 
@@ -1001,7 +1002,7 @@ type errPodListPodOps struct {
 }
 
 // List retuns an error
-func (e *errPodListPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+func (e *errPodListPodOps) List(opts metav1.ListOptions) (*k8sApiv1.PodList, error) {
 	return nil, fmt.Errorf("err-pod-list")
 }
 
@@ -1056,7 +1057,7 @@ type errMissDeploymentListDeploymentOps struct {
 }
 
 // List retuns a list of deployments which are not expected
-func (e *errMissDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+func (e *errMissDeploymentListDeploymentOps) List(opts metav1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
 	d := k8sApisExtnsV1Beta1.Deployment{}
 	d.Name = "err-deployment-list"
 	d.Labels = map[string]string{
@@ -1118,7 +1119,7 @@ type errPodListMissPodOps struct {
 }
 
 // List retuns a list of pods which are not expected
-func (e *errPodListMissPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+func (e *errPodListMissPodOps) List(opts metav1.ListOptions) (*k8sApiv1.PodList, error) {
 	p := k8sApiv1.Pod{}
 	p.Name = "err-pod-list"
 	p.Labels = map[string]string{
@@ -1180,7 +1181,7 @@ type errNilDeploymentListDeploymentOps struct {
 }
 
 // List retuns nil
-func (e *errNilDeploymentListDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+func (e *errNilDeploymentListDeploymentOps) List(opts metav1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
 	return nil, nil
 }
 
@@ -1232,7 +1233,7 @@ type errPodListNilPodOps struct {
 }
 
 // List retuns nil
-func (e *errPodListNilPodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+func (e *errPodListNilPodOps) List(opts metav1.ListOptions) (*k8sApiv1.PodList, error) {
 	return nil, nil
 }
 
@@ -1289,7 +1290,7 @@ type okReadStorageDeploymentOps struct {
 }
 
 // List retuns a list of expected deployments
-func (e *okReadStorageDeploymentOps) List(opts k8sApiv1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
+func (e *okReadStorageDeploymentOps) List(opts metav1.ListOptions) (*k8sApisExtnsV1Beta1.DeploymentList, error) {
 	d := k8sApisExtnsV1Beta1.Deployment{}
 	d.Name = "ok-vsm-name"
 	d.Labels = map[string]string{
@@ -1310,7 +1311,7 @@ type okReadStoragePodOps struct {
 }
 
 // List retuns a list of expected pods
-func (e *okReadStoragePodOps) List(opts k8sApiv1.ListOptions) (*k8sApiv1.PodList, error) {
+func (e *okReadStoragePodOps) List(opts metav1.ListOptions) (*k8sApiv1.PodList, error) {
 	p := k8sApiv1.Pod{}
 	p.Name = "ok-vsm-name"
 	p.Labels = map[string]string{
