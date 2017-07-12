@@ -514,4 +514,6 @@ const (
 	K8sPodVersion K8sAnnotations = "v1"
 	// K8sDeploymentVersion is used to state the k8s Deployment version
 	K8sDeploymentVersion K8sAnnotations = "extensions/v1beta1"
+	// K8sHostnameTopologyKey is used to specify the hostname as topology key
+	K8sHostnameTopologyKey K8sAnnotations = "kubernetes.io/hostname"
 )

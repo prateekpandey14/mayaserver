@@ -715,6 +715,41 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 					},
 				},
 				Spec: k8sApiV1.PodSpec{
+					Affinity: &k8sApiV1.Affinity{
+						// Inter-pod anti-affinity rule
+						PodAntiAffinity: &k8sApiV1.PodAntiAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: []k8sApiV1.PodAffinityTerm{
+								k8sApiV1.PodAffinityTerm{
+									LabelSelector: &metav1.LabelSelector{
+										MatchLabels: map[string]string{
+											string(v1.VSMSelectorKey):     vsm,
+											string(v1.ReplicaSelectorKey): string(v1.JivaReplicaSelectorValue),
+										},
+									},
+									// TODO
+									// This is host based inter-pod anti-affinity
+									// Make it generic s.t. it can be zone based or region based
+									// inter-pod anti-affinity as well.
+									//
+									// TODO
+									// How about the cases, where some replicas should be host
+									// based anti-affinity & other replicas should be zone based
+									// anti-affinity. However, storage Admin should not spend effort
+									// on this. There should be some intelligent mechanism which
+									// can understand the setup to check if it has access to different
+									// zones, regions, etc. In addition, this intelligence should
+									// take into account storage capable nodes in these zones,
+									// regions. All of these sould result in suggestions to maya
+									// api server during provisioning.
+									//
+									// TODO
+									// Considering above scenarios, it makes more sense to have
+									// separate K8s Deployment or K8s Daemon for each replica.
+									TopologyKey: string(v1.K8sHostnameTopologyKey),
+								},
+							},
+						},
+					},
 					Containers: []k8sApiV1.Container{
 						k8sApiV1.Container{
 							Name:    vsm + string(v1.ReplicaSuffix) + string(v1.ContainerSuffix),
