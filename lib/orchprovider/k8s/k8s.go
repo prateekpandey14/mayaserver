@@ -745,7 +745,7 @@ func (k *k8sOrchestrator) createReplicaDeployment(volProProfile volProfile.Volum
 									// TODO
 									// Considering above scenarios, it makes more sense to have
 									// separate K8s Deployment or K8s Daemon for each replica.
-									TopologyKey: string(v1.K8sHostnameTopologyKey),
+									TopologyKey: v1.GetPVPReplicaTopologyKey(pvc.Labels),
 								},
 							},
 						},

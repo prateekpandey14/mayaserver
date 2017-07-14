@@ -10,6 +10,47 @@ import (
 	"github.com/openebs/mayaserver/lib/nethelper"
 )
 
+// GetPVPReplicaTopologyKey gets the not nil value of PVP's VSM Replica topology
+// key
+func GetPVPReplicaTopologyKey(profileMap map[string]string) string {
+	val := PVPReplicaTopologyKey(profileMap)
+	if val == "" {
+		val = DefaultPVPReplicaTopologyKey()
+	}
+
+	return val
+}
+
+// PVPReplicaTopologyKey will fetch the value specified against PVP's VSM
+// Replica topology key if available otherwise will return blank.
+func PVPReplicaTopologyKey(profileMap map[string]string) string {
+	val := ""
+	if profileMap != nil {
+		val = strings.TrimSpace(profileMap[string(PVPReplicaTopologyKeyLbl)])
+	}
+
+	if val != "" {
+		return val
+	}
+
+	return OSGetEnv(string(PVPReplicaTopologyKeyEnvVarKey), profileMap)
+}
+
+// DefaultPVPReplicaTopologyKey will fetch the default value for PVP's VSM
+// Replica topology key
+func DefaultPVPReplicaTopologyKey() string {
+	// TODO
+	// else get based on the replica count & current replica index
+	// e.g.
+	// if replica count = 2 then use K8sHostnameTopologyKey for 2 replicas
+	// if replica count = 1 then use K8sHostnameTopologyKey for the replica
+	// if replica count = 3 then use K8sHostnameTopologyKey for 2 replicas & use
+	// failure-domain.beta.kubernetes.io/zone for 1 replica if zone is really available
+	// if replica count > 3 then use K8sHostnameTopologyKey for n-1 replicas & use
+	// failure-domain.beta.kubernetes.io/zone for 1 replica if zone is really available
+	return string(K8sHostnameTopologyKey)
+}
+
 // GetPVPControllerCountInt gets the not nil value of PVP's VSM Controller count
 // in int
 func GetPVPControllerCountInt(profileMap map[string]string) (int, error) {
@@ -436,28 +477,6 @@ func GetOrchestratorNetworkSubnet(profileMap map[string]string) (string, error) 
 
 	return subnet, nil
 }
-
-// OrchestratorNetworkSubnet will fetch the value specified  orchestration
-// provider's network subnet if available otherwise will return blank.
-//func OrchestratorNetworkSubnet(profileMap map[string]string) string {
-//	val := ""
-//	if profileMap != nil {
-//		val = strings.TrimSpace(profileMap[string(OrchCNSubnetLbl)])
-//	}
-
-//	if val != "" {
-//		return val
-//	}
-
-// else get from environment variable
-//	return OSGetEnv(string(OrchestratorCNSubnetEnvVarKey), profileMap)
-//}
-
-// DefaultOrchestratorNetworkSubnet will fetch the coded default value for
-// orchestration provider's network subnet
-//func DefaultOrchestratorNetworkSubnet() string {
-//	return string(OrchCNSubnetDef)
-//}
 
 // GetOrchestratorNetworkInterface gets the not nil orchestration provider's
 // network interface

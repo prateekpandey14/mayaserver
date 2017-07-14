@@ -258,6 +258,10 @@ ubuntu@kubemaster-01:/vagrant$ kubectl get pod/maya-apiserver-2275666786-h0qqw -
 
 ##### Create yaml specs to launch VSM as K8s deployments & K8s service
 
+```bash
+cat launch-2-vsm.yaml
+```
+
 ```yaml
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -266,6 +270,10 @@ metadata:
 ```
 
 - Alternatively, a sample specs with specific volume size & single replica
+
+```bash
+cat launch-vsm.yaml
+```
 
 ```yaml
 kind: PersistentVolumeClaim
@@ -279,7 +287,7 @@ metadata:
 
 ```bash
 curl -k -H "Content-Type: application/yaml" \
-  -XPOST -d"$(cat my-jiva-vsm.yaml)" \
+  -XPOST -d"$(cat launch-2-vsm.yaml)" \
   http://10.44.0.1:5656/latest/volumes/
 ```
 
