@@ -250,8 +250,14 @@ func (k *k8sUtil) outClusterCS() (*kubernetes.Clientset, error) {
 	return nil, fmt.Errorf("outClusterCS not supported in '%s'", k.Name())
 }
 
-//
+// SetControllerIPs will extract the IPs from storage controller containers & set it
+// against the passed map
 func SetControllerIPs(cp k8sApiV1.Pod, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(cp.Status.PodIP)
 	if current == "" {
 		// Nothing to be done
@@ -268,8 +274,14 @@ func SetControllerIPs(cp k8sApiV1.Pod, annotations map[string]string) {
 	}
 }
 
-//
+// SetReplicaIPs will extract the IPs from storage replica containers & set it
+// against the passed map
 func SetReplicaIPs(rp k8sApiV1.Pod, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(rp.Status.PodIP)
 	if current == "" {
 		// Nothing to be done
@@ -286,8 +298,14 @@ func SetReplicaIPs(rp k8sApiV1.Pod, annotations map[string]string) {
 	}
 }
 
-//
+// SetControllerStatuses will extract the status of storage controller containers
+// & set it against the passed map
 func SetControllerStatuses(cp k8sApiV1.Pod, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(string(cp.Status.Phase))
 	if current == "" {
 		// Nothing to be done
@@ -304,8 +322,14 @@ func SetControllerStatuses(cp k8sApiV1.Pod, annotations map[string]string) {
 	}
 }
 
-//
+// SetReplicaStatuses will extract the status of storage replica containers
+// & set it against the passed map
 func SetReplicaStatuses(rp k8sApiV1.Pod, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(string(rp.Status.Phase))
 	if current == "" {
 		// Nothing to be done
@@ -326,26 +350,60 @@ func SetReplicaStatuses(rp k8sApiV1.Pod, annotations map[string]string) {
 // Not sure !!
 func SetServiceStatuses(svc k8sApiV1.Service, annotations map[string]string) {}
 
+// SetReplicaCount will extract the count of storage replica containers & set it
+// against the passed map
 func SetReplicaCount(rd k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	// err handling
+	if annotations == nil || rd.Spec.Replicas == nil {
+		// do nothing
+		return
+	}
+
 	annotations[string(v1.ReplicaCountAPILbl)] = fmt.Sprint(*rd.Spec.Replicas)
 }
 
-// TODO Get it from Pod
+// TODO
+// Code it in a better way!!
+//
+// SetReplicaVolSize will extract the size of the storage i.e. storage capacity
+// & set it against the passed map
 func SetReplicaVolSize(rd k8sApisExtnsBeta1.Deployment, annotations map[string]string) {
+	// err handling
+	if annotations == nil || rd.Spec.Template.Spec.Containers == nil || len(rd.Spec.Template.Spec.Containers) == 0 {
+		// do nothing
+		return
+	}
+
 	// TODO
 	// Set the size as labels in replica deployment & extract from the label
 	// Current way of extraction is a very crude way !!
 	con := rd.Spec.Template.Spec.Containers[0]
+	// Get the size from the launch args passed to the container
 	size := con.Args[len(con.Args)-2]
 
 	annotations[string(v1.VolumeSizeAPILbl)] = size
 }
 
+// SetIQN will set the name of the volume (which is the name of the VSM) against
+// the passed map
 func SetIQN(vsm string, annotations map[string]string) {
+	// err handling
+	if annotations == nil || vsm == "" {
+		// do nothing
+		return
+	}
+
 	annotations[string(v1.IQNAPILbl)] = string(v1.JivaIqnFormatPrefix) + ":" + vsm
 }
 
+// SetControllerClusterIPs will extract the cluster IP address of storage
+// controller service & set it against the passed map
 func SetControllerClusterIPs(svc k8sApiV1.Service, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(svc.Spec.ClusterIP)
 	if current == "" {
 		// Nothing to be done
@@ -362,7 +420,14 @@ func SetControllerClusterIPs(svc k8sApiV1.Service, annotations map[string]string
 	}
 }
 
+// SetISCSITargetPortals will extract the cluster IP address of storage controller
+// service & set the iscsi target portal against the passed map
 func SetISCSITargetPortals(svc k8sApiV1.Service, annotations map[string]string) {
+	if annotations == nil {
+		// do nothing
+		return
+	}
+
 	current := strings.TrimSpace(svc.Spec.ClusterIP)
 	if current == "" {
 		// Nothing to be done
