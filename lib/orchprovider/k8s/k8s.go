@@ -388,6 +388,8 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 		return nil, err
 	}
 
+	glog.Infof("Fetching info on VSM '%s: %s'", ns, vsm)
+
 	annotations := map[string]string{}
 
 	// Extract from Replica Deployments
@@ -467,6 +469,8 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	pv := &v1.PersistentVolume{}
 	pv.Name = vsm
 	pv.Annotations = annotations
+
+	glog.Infof("Info fetched successfully for VSM '%s: %s'", ns, vsm)
 
 	return pv, nil
 }
