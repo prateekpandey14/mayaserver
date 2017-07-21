@@ -268,7 +268,7 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 	fmt.Println("[DEBUG] Processing VSM read request")
 
 	if vsmName == "" {
-		return nil, fmt.Errorf("VSM name is missing")
+		return nil, CodedError(400, fmt.Sprintf("VSM name is missing"))
 	}
 
 	// Get jiva persistent volume provisioner instance
@@ -299,6 +299,10 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 		return nil, err
 	}
 
+	if details == nil {
+		return nil, CodedError(404, fmt.Sprintf("VSM '%s' not found", vsmName))
+	}
+
 	fmt.Println("[DEBUG] Processed VSM read request successfully for '" + vsmName + "'")
 
 	return details, nil
@@ -310,7 +314,7 @@ func (s *HTTPServer) vsmDelete(resp http.ResponseWriter, req *http.Request, vsmN
 	fmt.Println("[DEBUG] Processing VSM delete request")
 
 	if vsmName == "" {
-		return nil, fmt.Errorf("VSM name is missing")
+		return nil, CodedError(400, fmt.Sprintf("VSM name is missing"))
 	}
 
 	// Get Jiva as the default persistent volume provisioner instance

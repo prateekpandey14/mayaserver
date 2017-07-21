@@ -371,9 +371,8 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 
 // readVSM will fetch information about a VSM
 func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
-	// flag to check if VSM has all its dependents created
-	// set it to true initially
-	hasAllDependents := true
+	// flag that checks if at-least one child object of VSM exists
+	doesExist := false
 
 	if volProProfile == nil {
 		return nil, fmt.Errorf("Nil volume provisioner profile provided")
@@ -429,13 +428,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if rDeploys != nil && len(rDeploys.Items) > 0 {
+		doesExist = true
 		for _, rd := range rDeploys.Items {
 			SetReplicaCount(rd, annotations)
 			SetReplicaVolSize(rd, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Replica Deployment(s)", ns, vsm)
+		glog.Warningf("Missing Replica Deployment(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Controller Pods
@@ -445,13 +444,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if cPods != nil && len(cPods.Items) > 0 {
+		doesExist = true
 		for _, cp := range cPods.Items {
 			SetControllerIPs(cp, annotations)
 			SetControllerStatuses(cp, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Controller Pod(s)", ns, vsm)
+		glog.Warningf("Missing Controller Pod(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Replica Pods
@@ -461,13 +460,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if rPods != nil && len(rPods.Items) > 0 {
+		doesExist = true
 		for _, rp := range rPods.Items {
 			SetReplicaIPs(rp, annotations)
 			SetReplicaStatuses(rp, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Replica Pod(s)", ns, vsm)
+		glog.Warningf("Missing Replica Pod(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Controller Services
@@ -477,18 +476,18 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if cSvcs != nil && len(cSvcs.Items) > 0 {
+		doesExist = true
 		for _, cSvc := range cSvcs.Items {
 			SetISCSITargetPortals(cSvc, annotations)
 			SetServiceStatuses(cSvc, annotations)
 			SetControllerClusterIPs(cSvc, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Controller Service(s)", ns, vsm)
+		glog.Warningf("Missing Controller Service(s) for VSM '%s: %s'", ns, vsm)
 	}
 
-	if !hasAllDependents {
-		return nil, fmt.Errorf("VSM '%s: %s' not found", ns, vsm)
+	if !doesExist {
+		return nil, nil
 	}
 
 	SetIQN(vsm, annotations)
