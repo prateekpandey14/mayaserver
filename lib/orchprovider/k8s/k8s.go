@@ -189,47 +189,47 @@ func (k *k8sOrchestrator) AddStorage(volProProfile volProfile.VolumeProvisionerP
 // NOTE:
 //    This also handles the cases where creation failed mid-flight, and bail
 // out requires calling delete function.
-func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) error {
+func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvisionerProfile) (bool, error) {
 	// Assume the presence of atleast one VSM object
 	// Set this flag to false initially
 	var hasAtleastOneVSMObj bool
 
 	if volProProfile == nil {
-		return fmt.Errorf("Nil volume provisioner profile provided")
+		return false, fmt.Errorf("Nil volume provisioner profile provided")
 	}
 
 	vsm, err := volProProfile.VSMName()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if strings.TrimSpace(vsm) == "" {
-		return fmt.Errorf("VSM name is required to delete storage")
+		return false, fmt.Errorf("VSM name is required to delete storage")
 	}
 
 	k8sUtl := k8sOrchUtil(k, volProProfile)
 
 	kc, supported := k8sUtl.K8sClient()
 	if !supported {
-		return fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
+		return false, fmt.Errorf("K8s client not supported by '%s'", k8sUtl.Name())
 	}
 
 	// fetch k8s deployment operations
 	dOps, err := kc.DeploymentOps()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// fetch k8s Pod operations
 	pOps, err := kc.Pods()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// fetch k8s service operations
 	sOps, err := kc.Services()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// This ensures the dependents of Deployment e.g. ReplicaSets to be deleted
@@ -238,7 +238,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	// Delete the Replica Deployments first
 	rDeploys, err := k.getReplicaDeploys(vsm, dOps)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if rDeploys != nil && len(rDeploys.Items) > 0 {
@@ -248,7 +248,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
@@ -256,7 +256,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	// Delete the Controller Deployments next
 	cDeploys, err := k.getControllerDeploys(vsm, dOps)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if cDeploys != nil && len(cDeploys.Items) > 0 {
@@ -266,7 +266,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
@@ -274,7 +274,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	// Delete the Replica Pods before Controller Pod(s)
 	rPods, err := k.getReplicaPods(vsm, pOps)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if rPods != nil && len(rPods.Items) > 0 {
@@ -284,7 +284,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
@@ -292,7 +292,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	// Delete the Controller Pods next
 	cPods, err := k.getControllerPods(vsm, pOps)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if cPods != nil && len(cPods.Items) > 0 {
@@ -302,7 +302,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
@@ -310,7 +310,7 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 	// Delete the Controller Services at last
 	cSvcs, err := k.getControllerServices(vsm, sOps)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if cSvcs != nil && len(cSvcs.Items) > 0 {
@@ -320,16 +320,17 @@ func (k *k8sOrchestrator) DeleteStorage(volProProfile volProfile.VolumeProvision
 				OrphanDependents: &orphanDependents,
 			})
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 	}
 
+	// Nothing to be deleted
 	if !hasAtleastOneVSMObj {
-		return fmt.Errorf("VSM '%s' not found", vsm)
+		return false, nil
 	}
 
-	return nil
+	return true, nil
 }
 
 // ReadStorage will fetch information about the persistent volume
@@ -341,9 +342,9 @@ func (k *k8sOrchestrator) ReadStorage(volProProfile volProfile.VolumeProvisioner
 
 // readVSM will fetch information about a VSM
 func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumeProvisionerProfile) (*v1.PersistentVolume, error) {
-	// flag to check if VSM has all its dependents created
-	// set it to true initially
-	hasAllDependents := true
+
+	// flag that checks if at-least one child object of VSM exists
+	doesExist := false
 
 	if volProProfile == nil {
 		return nil, fmt.Errorf("Nil volume provisioner profile provided")
@@ -399,13 +400,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if rDeploys != nil && len(rDeploys.Items) > 0 {
+		doesExist = true
 		for _, rd := range rDeploys.Items {
 			SetReplicaCount(rd, annotations)
 			SetReplicaVolSize(rd, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Replica Deployment(s)", ns, vsm)
+		glog.Warningf("Missing Replica Deployment(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Controller Pods
@@ -415,13 +416,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if cPods != nil && len(cPods.Items) > 0 {
+		doesExist = true
 		for _, cp := range cPods.Items {
 			SetControllerIPs(cp, annotations)
 			SetControllerStatuses(cp, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Controller Pod(s)", ns, vsm)
+		glog.Warningf("Missing Controller Pod(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Replica Pods
@@ -431,13 +432,13 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if rPods != nil && len(rPods.Items) > 0 {
+		doesExist = true
 		for _, rp := range rPods.Items {
 			SetReplicaIPs(rp, annotations)
 			SetReplicaStatuses(rp, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Replica Pod(s)", ns, vsm)
+		glog.Warningf("Missing Replica Pod(s) for VSM '%s: %s'", ns, vsm)
 	}
 
 	// Extract from Controller Services
@@ -447,18 +448,18 @@ func (k *k8sOrchestrator) readVSM(vsm string, volProProfile volProfile.VolumePro
 	}
 
 	if cSvcs != nil && len(cSvcs.Items) > 0 {
+		doesExist = true
 		for _, cSvc := range cSvcs.Items {
 			SetISCSITargetPortals(cSvc, annotations)
 			SetServiceStatuses(cSvc, annotations)
 			SetControllerClusterIPs(cSvc, annotations)
 		}
 	} else {
-		hasAllDependents = false
-		glog.Warningf("VSM '%s: %s' has no Controller Service(s)", ns, vsm)
+		glog.Warningf("Missing Controller Service(s) for VSM '%s: %s'", ns, vsm)
 	}
 
-	if !hasAllDependents {
-		return nil, fmt.Errorf("VSM '%s: %s' not found", ns, vsm)
+	if !doesExist {
+		return nil, nil
 	}
 
 	SetIQN(vsm, annotations)

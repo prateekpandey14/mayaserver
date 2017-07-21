@@ -16,7 +16,8 @@ import (
 //    Should it return specific types than interface{} ?
 func (s *HTTPServer) VSMSpecificRequest(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
 
-	s.logger.Printf("[DEBUG] Processing %v request", req.Method)
+	fmt.Println("[DEBUG] Processing", req.Method, "request")
+
 	switch req.Method {
 	case "PUT", "POST":
 		return s.vsmAdd(resp, req)
@@ -54,7 +55,8 @@ func (s *HTTPServer) vsmSpecificGetRequest(resp http.ResponseWriter, req *http.R
 
 // vsmList is the http handler that lists VSMs
 func (s *HTTPServer) vsmList(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-	s.logger.Printf("[DEBUG] Processing vsmList request")
+
+	fmt.Println("[DEBUG] Processing VSM list request")
 
 	// Create a PVC
 	pvc := &v1.PersistentVolumeClaim{}
@@ -85,14 +87,18 @@ func (s *HTTPServer) vsmList(resp http.ResponseWriter, req *http.Request) (inter
 		return nil, err
 	}
 
+	fmt.Println("[DEBUG] Processed VSM list request successfully")
+
 	return l, nil
 }
 
 // vsmRead is the http handler that fetches the details of a VSM
 func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmName string) (interface{}, error) {
-	s.logger.Printf("[DEBUG] Processing vsmRead request")
+
+	fmt.Println("[DEBUG] Processing VSM read request")
+
 	if vsmName == "" {
-		return nil, fmt.Errorf("VSM name is missing")
+		return nil, CodedError(400, fmt.Sprintf("VSM name is missing"))
 	}
 
 	// Create a PVC
@@ -123,13 +129,22 @@ func (s *HTTPServer) vsmRead(resp http.ResponseWriter, req *http.Request, vsmNam
 		return nil, err
 	}
 
+	if details == nil {
+		return nil, CodedError(404, fmt.Sprintf("VSM '%s' not found", vsmName))
+	}
+
+	fmt.Println("[DEBUG] Processed VSM read request successfully for '" + vsmName + "'")
+
 	return details, nil
 }
 
 // vsmDelete is the http handler that fetches the details of a VSM
 func (s *HTTPServer) vsmDelete(resp http.ResponseWriter, req *http.Request, vsmName string) (interface{}, error) {
+
+	fmt.Println("[DEBUG] Processing VSM delete request")
+
 	if vsmName == "" {
-		return nil, fmt.Errorf("VSM name is missing")
+		return nil, CodedError(400, fmt.Sprintf("VSM name is missing"))
 	}
 
 	// Create a PVC
@@ -157,17 +172,26 @@ func (s *HTTPServer) vsmDelete(resp http.ResponseWriter, req *http.Request, vsmN
 		return nil, fmt.Errorf("VSM delete is not supported by '%s:%s'", pvp.Label(), pvp.Name())
 	}
 
-	err = remover.Remove()
+	removed, err := remover.Remove()
 	if err != nil {
 		return nil, err
 	}
+
+	// If there was not any err & still no removal
+	if !removed {
+		return nil, CodedError(404, fmt.Sprintf("VSM '%s' not found", vsmName))
+	}
+
+	fmt.Println("[DEBUG] Processed VSM delete request successfully for '" + vsmName + "'")
 
 	return fmt.Sprintf("VSM '%s' deleted successfully", vsmName), nil
 }
 
 // vsmAdd is the http handler that fetches the details of a VSM
 func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
-	s.logger.Printf("[DEBUG] Processing vsmAdd request")
+
+	fmt.Println("[DEBUG] Processing VSM add request")
+
 	pvc := v1.PersistentVolumeClaim{}
 
 	// The yaml/json spec is decoded to pvc struct
@@ -203,6 +227,8 @@ func (s *HTTPServer) vsmAdd(resp http.ResponseWriter, req *http.Request) (interf
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("[DEBUG] Processed VSM add request successfully for '" + pvc.Name + "'")
 
 	return details, nil
 }
