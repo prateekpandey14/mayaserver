@@ -27,12 +27,16 @@ type OrchestratorInterface interface {
 
 	// StorageOps gets the instance that deals with storage related operations.
 	// Will return false if not supported.
+	//
+	// NOTE:
+	//    This is invoked on a per request basis. In other words, every request will
+	// invoke StorageOps to invoke storage specific operations thereafter.
 	StorageOps() (StorageOps, bool)
 }
 
 // StorageOps exposes various storage related operations that deals with
-// storage placements, scheduling, etc. The low level work is done by the
-// orchestrator.
+// storage placements, scheduling, etc. The low level work is in turn delegated
+// to the respective orchestrator.
 type StorageOps interface {
 
 	// AddStorage will add persistent volume running as containers

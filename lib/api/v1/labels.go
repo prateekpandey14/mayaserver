@@ -231,9 +231,71 @@ const (
 	PVPControllerIPsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/controller-ips"
 	// Label / Tag for a persistent volume provisioner's persistent path
 	PVPPersistentPathLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/persistent-path"
+
 	// PVPReplicaTopologyKeyLbl is the label for a persistent volume provisioner's
 	// VSM replica topology key
 	PVPReplicaTopologyKeyLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/replica-topology-key"
+
+	// PVPNodeAffinityExpressionsLbl is the label to determine the node affinity
+	// of the replica(s).
+	//
+	// NOTE:
+	//    1. These are comma separated key value pairs, where each
+	// key & value is separated by an operator e.g. In, NotIn, Exists, DoesNotExist
+	//
+	//    2. The key & value should have been labeled against a node or group of
+	// nodes belonging to the K8s cluster
+	//
+	//    3. The replica count should match the number of of pairs provided
+	//
+	// Usage:
+	// For OpenEBS volume with 2 replicas:
+	// volumeprovisioner.mapi.openebs.io/node-affinity-expressions=
+	//    "<replica-identifier>=kubernetes.io/hostname:In:node1,
+	//     <another-replica-identifier>=kubernetes.io/hostname:In:node2"
+	//
+	// Usage:
+	// For OpenEBS volume with 3 replicas:
+	// volumeprovisioner.mapi.openebs.io/node-affinity-expressions=
+	//    "<replica-identifier>=kubernetes.io/hostname:In:node1,
+	//     <another-replica-identifier>=kubernetes.io/hostname:In:node2,
+	//     <yet-another-replica-identifier>=kubernetes.io/hostname:In:node3"
+	//
+	// Usage:
+	// For OpenEBS volume with 3 replicas:
+	// volumeprovisioner.mapi.openebs.io/node-affinity-expressions=
+	//    "<replica-identifier>=volumeprovisioner.mapi.openebs.io/replica-zone-1-ssd-1:In:zone-1-ssd-1,
+	//     <another-replica-identifier>=openebs.io/replica-zone-1-ssd-2:In:zone-1-ssd-2,
+	//     <yet-another-replica-identifier>=openebs.io/replica-zone-2-ssd-1:In:zone-2-ssd-1"
+	//
+	// Usage:
+	// For OpenEBS volume with 3 replicas:
+	// volumeprovisioner.mapi.openebs.io/node-affinity-expressions=
+	//    "<replica-identifier>=openebs.io/replica-zone-1-grp-1:In:zone-1-grp-1,
+	//     <another-replica-identifier>=openebs.io/replica-zone-1-grp-2:In:zone-1-grp-2,
+	//     <yet-another-replica-identifier>=openebs.io/replica-zone-2-grp-1:In:zone-2-grp-1"
+	//PVPNodeAffinityExpressionsLbl VolumeProvisionerProfileLabel = "volumeprovisioner.mapi.openebs.io/node-affinity-expressions"
+
+	// PVPNodeSelectorKeyLbl is the label to build the node affinity
+	// of the replica based on the key & the replica identifier
+	//
+	// NOTE:
+	//  PVPNodeAffinityExpressionsLbl is used here as key is a part of the expressions
+	//PVPNodeSelectorKeyLbl VolumeProvisionerProfileLabel = PVPNodeAffinityExpressionsLbl
+
+	// PVPNodeSelectorOpLbl is the label to build the node affinity
+	// of the replica based on the operator & the replica identifier
+	//
+	// NOTE:
+	//  PVPNodeAffinityExpressionsLbl is used here as operator is a part of the expressions
+	//PVPNodeSelectorOpLbl VolumeProvisionerProfileLabel = PVPNodeAffinityExpressionsLbl
+
+	// PVPNodeSelectorValueLbl is the label to build the node affinity
+	// of the replica based on the operator & the replica identifier
+	//
+	// NOTE:
+	//  PVPNodeAffinityExpressionsLbl is used here as value is a part of the expressions
+	//PVPNodeSelectorValueLbl VolumeProvisionerProfileLabel = PVPNodeAffinityExpressionsLbl
 )
 
 type MayaAPIServiceOutputLabel string
@@ -284,6 +346,14 @@ const (
 	// PVPStorageSizeDef is the default value for persistent volume provisioner's
 	// replica size
 	PVPStorageSizeDef VolumeProvisionerDefaults = "1G"
+
+	// PVPNodeSelectorKeyDef is the default value for volume replica's node selector
+	// key
+	//PVPNodeSelectorKeyDef VolumeProvisionerDefaults = "kubernetes.io/hostname"
+
+	// PVPNodeSelectorOpDef is the default value for volume replica's node selector
+	// operator
+	//PVPNodeSelectorOpDef VolumeProvisionerDefaults = "In"
 )
 
 // NameLabel type will be used to identify various maya api service components
@@ -359,6 +429,9 @@ const (
 	// ControllerSelectorKeyEquals is used to filter controller when
 	// selector logic is used
 	ControllerSelectorKeyEquals GenericAnnotations = ControllerSelectorKey + "="
+
+	// ReplicaCountSelectorKey is used to filter replicas
+	//ReplicaCountSelectorKey GenericAnnotations = "openebs/replica-count"
 
 	// ReplicaSelectorKey is used to filter replicas
 	ReplicaSelectorKey GenericAnnotations = "openebs/replica"

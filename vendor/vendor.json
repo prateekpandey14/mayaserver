@@ -438,12 +438,12 @@
 			"revision": "d680ca3ed853995402af43b866311167281bdc20"
 		},
 		{
-			"checksumSHA1": "7Hjtgu1Yu+Ks0cKf2ldRhXAu/LE=",
+			"checksumSHA1": "kNE0OM5zElbmkeY6UD9JgBwrb2g=",
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "d680ca3ed853995402af43b866311167281bdc20"
 		},
 		{
-			"checksumSHA1": "DVLYAo9qL2EilduyXwBKMqL44U4=",
+			"checksumSHA1": "pd6XBf0WgpUlkBcoSMImKd3l3zo=",
 			"path": "golang.org/x/text/width",
 			"revision": "d680ca3ed853995402af43b866311167281bdc20"
 		},

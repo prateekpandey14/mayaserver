@@ -10,6 +10,90 @@ import (
 	"github.com/openebs/mayaserver/lib/nethelper"
 )
 
+// GetPVPNodeSelectorKey gets the not nil value of volume provisioner volume
+// replica's node selector key
+//func GetPVPNodeSelectorKey(repIdentifier string, profileMap map[string]string) string {
+//	return PVPNodeSelectorKey(repIdentifier, profileMap)
+//}
+
+// PVPNodeSelectorKey will fetch the value specified against volume provisioner
+// volume replica's node selector key if available otherwise will return blank.
+//func PVPNodeSelectorKey(repIdentifier string, profileMap map[string]string) string {
+//	val := ""
+//	if profileMap != nil {
+//		val = strings.TrimSpace(profileMap[string(PVPNodeSelectorKeyLbl)])
+//	}
+
+//	if val == "" {
+//		return val
+//	}
+
+// TODO
+// Make use of repIdentifier to extract the specific key
+
+//	return val
+//}
+
+// DefaultPVPNodeSelectorKey will fetch the default value for volume provisioner
+// volume replica's node selector key
+//func DefaultPVPNodeSelectorKey() string {
+//	return string(PVPNodeSelectorKeyDef)
+//}
+
+// GetPVPNodeSelectorOp gets the not nil value of volume provisioner volume
+// replica's node selector operator
+//func GetPVPNodeSelectorOp(repIdentifier string, profileMap map[string]string) string {
+//	return PVPNodeSelectorOp(repIdentifier, profileMap)
+//}
+
+// PVPNodeSelectorOp will fetch the value specified against volume provisioner
+// volume replica's node selector operator if available otherwise will return blank.
+//func PVPNodeSelectorOp(repIdentifier string, profileMap map[string]string) string {
+//	val := ""
+//	if profileMap != nil {
+//		val = strings.TrimSpace(profileMap[string(PVPNodeSelectorOpLbl)])
+//	}
+
+//	if val == "" {
+//		return val
+//	}
+
+// TODO
+// Make use of replica name to extract the specific operator
+
+//	return val
+//}
+
+// DefaultPVPNodeSelectorOp will fetch the default value for volume provisioner
+// volume replica's node selector operator
+//func DefaultPVPNodeSelectorOp() string {
+//	return string(PVPNodeSelectorOpDef)
+//}
+
+// GetPVPNodeSelectorValue gets the not nil value of volume provisioner volume
+// replica's node selector value
+//func GetPVPNodeSelectorValue(repIdentifier string, profileMap map[string]string) string {
+//	return PVPNodeSelectorValue(repIdentifier, profileMap)
+//}
+
+// PVPNodeSelectorValue will fetch the value specified against volume provisioner
+// volume replica's node selector value if available otherwise will return blank.
+//func PVPNodeSelectorValue(repIdentifier string, profileMap map[string]string) string {
+//	val := ""
+//	if profileMap != nil {
+//		val = strings.TrimSpace(profileMap[string(PVPNodeSelectorValueLbl)])
+//	}
+
+//	if val == "" {
+//		return val
+//	}
+
+// TODO
+// Make use of repIdentifier to extract the specific operator
+
+//	return val
+//}
+
 // GetPVPReplicaTopologyKey gets the not nil value of PVP's VSM Replica topology
 // key
 func GetPVPReplicaTopologyKey(profileMap map[string]string) string {
@@ -757,10 +841,10 @@ func DefaultJivaAPIPort() int32 {
 
 // DefaultPersistentPathCount will provide the default count of persistent
 // paths required during provisioning.
-func DefaultPersistentPathCount() int {
-	pCount, _ := strconv.Atoi(string(PVPPersistentPathCountDef))
-	return pCount
-}
+//func DefaultPersistentPathCount() int {
+//	pCount, _ := strconv.Atoi(string(PVPPersistentPathCountDef))
+//	return pCount
+//}
 
 // PersistentPathCount will fetch the value specified against persistent volume
 // persistent path count if available otherwise will return blank.
@@ -768,14 +852,14 @@ func DefaultPersistentPathCount() int {
 // NOTE:
 //    This utility function does not validate & just returns if not capable of
 // performing
-func PersistentPathCount(profileMap map[string]string) string {
-	if profileMap == nil {
-		return ""
-	}
+//func PersistentPathCount(profileMap map[string]string) string {
+//if profileMap == nil {
+//	return ""
+//}
 
-	// Extract persistent path count
-	return profileMap[string(PVPPersistentPathCountLbl)]
-}
+// Extract persistent path count
+//return profileMap[string(PVPPersistentPathCountLbl)]
+//}
 
 // Replicas returns a pointer to an int32 of a int value
 func Replicas(rcount int) *int32 {
