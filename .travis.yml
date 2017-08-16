@@ -11,10 +11,6 @@ go:
 branches:
   only:
     - master
-
-before_install:
-  - sudo apt-get update
-
 install:
   - make init
   - make
