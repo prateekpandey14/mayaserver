@@ -29,7 +29,7 @@ dev: format
 bin:
 	@CTLNAME=${CTLNAME} sh -c "'$(PWD)/buildscripts/build.sh'"
 
-init: bootstrap deps
+init: bootstrap
 
 deps:
 	rm -rf vendor/github.com/ && \
