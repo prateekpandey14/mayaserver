@@ -5,6 +5,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	//	"github.com/NYTimes/gziphandler"
+	"github.com/ghodss/yaml"
+	"github.com/openebs/mayaserver/lib/config"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/ugorji/go/codec"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,11 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/NYTimes/gziphandler"
-	"github.com/ghodss/yaml"
-	"github.com/openebs/mayaserver/lib/config"
-	"github.com/ugorji/go/codec"
 )
 
 const (
@@ -32,6 +33,25 @@ var (
 	// structs. The pretty handle will add indents for easier human consumption.
 	jsonHandle       = &codec.JsonHandle{}
 	jsonHandlePretty = &codec.JsonHandle{Indent: 4}
+	// How often our /latest/volumes request durations fall into one of the defined buckets.
+	// We can use default buckets or set ones we are interested in.
+	volumeRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "volume_request_duration_seconds",
+			Help:    "Histogram of the /latest/volumes request duration.",
+			Buckets: []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+		},
+		[]string{"code", "method"},
+	)
+	// Counter vector to which we can attach labels. That creates many key-value
+	// label combinations. So in our case we count requests by status code separetly.
+	volumeRequestCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "volume_requests_total",
+			Help: "Total number of /latest/volumes requests.",
+		},
+		[]string{"code", "method"},
+	)
 )
 
 // HTTPServer is used to wrap maya api server and expose it over an HTTP interface
@@ -45,6 +65,12 @@ type HTTPServer struct {
 	listener net.Listener
 	logger   *log.Logger
 	addr     string
+}
+
+// init registers Prometheus metrics.
+func init() {
+	prometheus.MustRegister(volumeRequestDuration)
+	prometheus.MustRegister(volumeRequestCounter)
 }
 
 // NewHTTPServer starts new HTTP server over Maya server
@@ -90,7 +116,9 @@ func NewHTTPServer(maya *MayaApiServer, config *config.MayaConfig, logOutput io.
 	srv.registerHandlers(config.ServiceProvider, config.EnableDebug)
 
 	// Start the server
-	go http.Serve(ln, gziphandler.GzipHandler(mux))
+	// go http.Serve(ln, gziphandler.GzipHandler(mux))
+	go http.Serve(ln, mux)
+
 	return srv, nil
 }
 
@@ -128,6 +156,7 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 
 	// Request w.r.t to a single VSM entity is handled here
 	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VSMSpecificRequest))
+	s.mux.Handle("/metrics", promhttp.Handler())
 }
 
 // HTTPCodedError is used to provide the HTTP error code
@@ -156,6 +185,7 @@ func (e *codedError) Code() int {
 // wrap is a convenient method used to wrap the handler function &
 // return this handler curried with common logic.
 func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Request) (interface{}, error)) func(resp http.ResponseWriter, req *http.Request) {
+	var code int
 	// curry the handler
 	f := func(resp http.ResponseWriter, req *http.Request) {
 		// some book keeping stuff
@@ -166,6 +196,14 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 			s.logger.Printf("[DEBUG] http: Request %v (%v)", reqURL, time.Now().Sub(start))
 		}()
 
+		// It captures the no of requests and duration of request coming on "/latest/volumes" endpoint.
+		defer func(begun time.Time) {
+			volumeRequestDuration.WithLabelValues(strconv.Itoa(code), req.Method).Observe(time.Since(begun).Seconds())
+
+			// volume_requests_total{status="500"}
+			volumeRequestCounter.WithLabelValues(strconv.Itoa(code), req.Method).Inc()
+		}(time.Now())
+
 		s.logger.Printf("[DEBUG] http: Request %v (%v)", reqURL, req.Method)
 		// Original handler is invoked
 		obj, err := handler(resp, req)
@@ -175,7 +213,7 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 	HAS_ERR:
 		if err != nil {
 			s.logger.Printf("[ERR] http: Request %v %v, error: %v", req.Method, reqURL, err)
-			code := 500
+			code = 500
 			if http, ok := err.(HTTPCodedError); ok {
 				code = http.Code()
 			}
