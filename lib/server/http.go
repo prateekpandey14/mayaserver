@@ -116,7 +116,12 @@ func NewHTTPServer(maya *MayaApiServer, config *config.MayaConfig, logOutput io.
 	srv.registerHandlers(config.ServiceProvider, config.EnableDebug)
 
 	// Start the server
-	// go http.Serve(ln, gziphandler.GzipHandler(mux))
+
+	// GzipHandler causing some issues if any request made from browser
+	// and we want the response that to be accessed in browser.That's
+	// we are not using GzipHandler.This issue may be related to GzipHandler
+	// and GzipHandler may be used later.
+	//	go http.Serve(ln, gziphandler.GzipHandler(mux))
 	go http.Serve(ln, mux)
 
 	return srv, nil
