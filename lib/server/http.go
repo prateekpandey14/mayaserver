@@ -33,22 +33,62 @@ var (
 	// structs. The pretty handle will add indents for easier human consumption.
 	jsonHandle       = &codec.JsonHandle{}
 	jsonHandlePretty = &codec.JsonHandle{Indent: 4}
-	// How often our /latest/volumes request durations fall into one of the defined buckets.
-	// We can use default buckets or set ones we are interested in.
-	volumeRequestDuration = prometheus.NewHistogramVec(
+
+	// A histogram samples observations (usually things like request durations
+	// or response sizes) and counts them in configurable buckets. It also
+	// provides a sum of all observed values.
+
+	// Buckets : Holds different time intervals to query for
+	// response time of the Request (GET,POST) of a network
+	// service.
+	// Accepted Values : Time Intervals in seconds
+	// Default value :{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
+
+	// We need to have new variables to hold counter and duration for every
+	// endpoint (apis).
+
+	// These counters donot reset to zero if container restarts.i.e, it will
+	// be increasing from time to time based on how many times a service is
+	// requested.
+
+	// latestOpenEBSVolumeRequestDuration Collects the response time since a
+	// request has been made on /latest/volumes
+	latestOpenEBSVolumeRequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "volume_request_duration_seconds",
-			Help:    "Histogram of the /latest/volumes request duration.",
-			Buckets: []float64{0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10},
+			Name:    "latest_openebs_volume_request_duration_seconds",
+			Help:    "Request response time of the /latest/volumes.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, .5, 1, 2.5, 5, 10},
+		},
+		// code is http code and method is http method returned by
+		// endpoint "/latest/volumes"
+		[]string{"code", "method"},
+	)
+	// latestOpenEBSVolumeRequestCounter Count the no of request Since a
+	// request has been made on /latest/volumes
+	latestOpenEBSVolumeRequestCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "latest_openebs_volume_requests_total",
+			Help: "Total number of /latest/volumes requests.",
 		},
 		[]string{"code", "method"},
 	)
-	// Counter vector to which we can attach labels. That creates many key-value
-	// label combinations. So in our case we count requests by status code separetly.
-	volumeRequestCounter = prometheus.NewCounterVec(
+	// latestOpenEBSMetaDataRequestDuration Collects the response time since
+	// a request has been made on /latest/meta-data
+	latestOpenEBSMetaDataRequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "latest_openebs_meta_data_request_duration_seconds",
+			Help:    "Request response time of the /latest/meta-data.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.5, 1, 2.5, 5, 10},
+		},
+		// code is http code and method is http method returned by
+		// endpoint "/latest/meta-data"
+		[]string{"code", "method"},
+	)
+	// Count the no of request Since a request has been made on /latest/meta-data
+	latestOpenEBSMetaDataRequestCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "volume_requests_total",
-			Help: "Total number of /latest/volumes requests.",
+			Name: "latest_openebs_meta_data_requests_total",
+			Help: "Total number of /latest/meta-data requests.",
 		},
 		[]string{"code", "method"},
 	)
@@ -67,10 +107,15 @@ type HTTPServer struct {
 	addr     string
 }
 
-// init registers Prometheus metrics.
+// init registers Prometheus metrics.It's good to register these varibles here
+// otherwise you need to register it before you are going to use it. So you will
+// have to register it everytime unnecessarily, instead initialize it once and
+// use anywhere at anytime through the code.
 func init() {
-	prometheus.MustRegister(volumeRequestDuration)
-	prometheus.MustRegister(volumeRequestCounter)
+	prometheus.MustRegister(latestOpenEBSVolumeRequestDuration)
+	prometheus.MustRegister(latestOpenEBSVolumeRequestCounter)
+	prometheus.MustRegister(latestOpenEBSMetaDataRequestDuration)
+	prometheus.MustRegister(latestOpenEBSMetaDataRequestCounter)
 }
 
 // NewHTTPServer starts new HTTP server over Maya server
@@ -118,9 +163,9 @@ func NewHTTPServer(maya *MayaApiServer, config *config.MayaConfig, logOutput io.
 	// Start the server
 
 	// GzipHandler causing some issues if any request made from browser
-	// and we want the response that to be accessed in browser.That's
+	// and we want the response that to be accessed in browser.That's why
 	// we are not using GzipHandler.This issue may be related to GzipHandler
-	// and GzipHandler may be used later.
+	// GzipHandler may be used later.
 	//	go http.Serve(ln, gziphandler.GzipHandler(mux))
 	go http.Serve(ln, mux)
 
@@ -157,10 +202,19 @@ func (s *HTTPServer) registerHandlers(serviceProvider string, enableDebug bool) 
 
 	// NOTE - The curried func (due to wrap) is set as mux handler
 	// NOTE - The original handler is passed as a func to the wrap method
-	s.mux.HandleFunc("/latest/meta-data/", s.wrap(s.MetaSpecificRequest))
+
+	// NOTE - For every endpoint you need to create a Counter and a Duration
+	//        variable to capture the response. These variables will store
+	//        the response time and no of times they are requested.
+
+	s.mux.HandleFunc("/latest/meta-data/", s.wrap(latestOpenEBSMetaDataRequestCounter,
+		latestOpenEBSMetaDataRequestDuration, s.MetaSpecificRequest))
 
 	// Request w.r.t to a single VSM entity is handled here
-	s.mux.HandleFunc("/latest/volumes/", s.wrap(s.VSMSpecificRequest))
+	s.mux.HandleFunc("/latest/volumes/", s.wrap(latestOpenEBSVolumeRequestCounter,
+		latestOpenEBSVolumeRequestDuration, s.VSMSpecificRequest))
+	// request for metrics is handled here. It displays metrics related to
+	// garbage collection, process, cpu...etc, and the custom metrics created.
 	s.mux.Handle("/metrics", promhttp.Handler())
 }
 
@@ -189,7 +243,7 @@ func (e *codedError) Code() int {
 
 // wrap is a convenient method used to wrap the handler function &
 // return this handler curried with common logic.
-func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Request) (interface{}, error)) func(resp http.ResponseWriter, req *http.Request) {
+func (s *HTTPServer) wrap(RequestCounter *prometheus.CounterVec, RequestDuration *prometheus.HistogramVec, handler func(resp http.ResponseWriter, req *http.Request) (interface{}, error)) func(resp http.ResponseWriter, req *http.Request) {
 	var code int
 	// curry the handler
 	f := func(resp http.ResponseWriter, req *http.Request) {
@@ -202,12 +256,19 @@ func (s *HTTPServer) wrap(handler func(resp http.ResponseWriter, req *http.Reque
 		}()
 
 		// It captures the no of requests and duration of request coming on "/latest/volumes" endpoint.
-		defer func(begun time.Time) {
-			volumeRequestDuration.WithLabelValues(strconv.Itoa(code), req.Method).Observe(time.Since(begun).Seconds())
+		defer func() {
+			// This will Display the metrics something similar to
+			// the examples given below
+			// exp: latest_openebs_volume_requests_duration{status="200", method="GET"}
+			// exp: latest_openebs_meta_data_request_duration{status="200", method="GET"}
+			RequestDuration.WithLabelValues(strconv.Itoa(code), req.Method).Observe(time.Since(start).Seconds())
 
-			// volume_requests_total{status="500"}
-			volumeRequestCounter.WithLabelValues(strconv.Itoa(code), req.Method).Inc()
-		}(time.Now())
+			// This will Display the metrics something similar to
+			// the examples given below
+			// exp: latest_openebs_volume_requests_total{status="200", method="GET"}
+			// exp: latest_openebs_meta_data_request_total{status="200", method="GET"}
+			RequestCounter.WithLabelValues(strconv.Itoa(code), req.Method).Inc()
+		}()
 
 		s.logger.Printf("[DEBUG] http: Request %v (%v)", reqURL, req.Method)
 		// Original handler is invoked
