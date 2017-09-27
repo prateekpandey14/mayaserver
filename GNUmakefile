@@ -104,7 +104,7 @@ install: bin/${CTLNAME}
 	install -o root -g root -m 0755 ./bin/${CTLNAME} /usr/local/bin/${CTLNAME}
 
 maya:
-	go get github.com/openebs/maya
+	go get -ldflags "-X main.Version='${TRAVIS_TAG}'" github.com/openebs/maya
 	ls ${GOPATH}/bin
 
 image: maya
