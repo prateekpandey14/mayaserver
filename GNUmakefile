@@ -108,10 +108,10 @@ maya:
 	ls ${GOPATH}/bin
 	#Add instructions to display help.
 	#TODO - These need to be changed into tests
-	${GOPATH}/bin/maya
-	${GOPATH}/bin/maya version
-	${GOPATH}/bin/maya volume
-	${GOPATH}/bin/maya snapshot
+	-${GOPATH}/bin/maya
+	-${GOPATH}/bin/maya version
+	-${GOPATH}/bin/maya volume
+	-${GOPATH}/bin/maya snapshot
 
 image: maya
 	@cp bin/m-apiserver buildscripts/docker/
