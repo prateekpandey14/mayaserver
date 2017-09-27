@@ -106,6 +106,12 @@ install: bin/${CTLNAME}
 maya:
 	go get -ldflags "-X main.Version='${TRAVIS_TAG}'" github.com/openebs/maya
 	ls ${GOPATH}/bin
+	#Add instructions to display help.
+	#TODO - These need to be changed into tests
+	${GOPATH}/bin/maya
+	${GOPATH}/bin/maya version
+	${GOPATH}/bin/maya volume
+	${GOPATH}/bin/maya snapshot
 
 image: maya
 	@cp bin/m-apiserver buildscripts/docker/
