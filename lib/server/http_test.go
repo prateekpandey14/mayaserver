@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/openebs/mayaserver/lib/config"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/ugorji/go/codec"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,9 +15,28 @@ import (
 	"strconv"
 	"testing"
 	"time"
+)
 
-	"github.com/openebs/mayaserver/lib/config"
-	"github.com/ugorji/go/codec"
+var (
+	RequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "latest_openebs_volume_request_duration_seconds",
+			Help:    "Request response time of the /latest/volumes.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, .5, 1, 2.5, 5, 10},
+		},
+		// code is http code and method is http method returned by
+		// endpoint "/latest/volumes"
+		[]string{"code", "method"},
+	)
+	// latestOpenEBSVolumeRequestCounter Count the no of request Since a
+	// request has been made on /latest/volumes
+	RequestCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "latest_openebs_volume_requests_total",
+			Help: "Total number of /latest/volumes requests.",
+		},
+		[]string{"code", "method"},
+	)
 )
 
 type TestServer struct {
@@ -65,6 +87,7 @@ func BenchmarkHTTPRequests(b *testing.B) {
 	s := makeHTTPTestServerNoLogs(b, func(mc *config.MayaConfig) {
 
 	})
+
 	defer s.Cleanup()
 
 	handler := func(resp http.ResponseWriter, req *http.Request) (interface{}, error) {
@@ -78,7 +101,7 @@ func BenchmarkHTTPRequests(b *testing.B) {
 		for pb.Next() {
 			resp := httptest.NewRecorder()
 			req, _ := http.NewRequest("GET", "/v1/kv/key", nil)
-			s.Server.wrap(handler)(resp, req)
+			s.Server.wrap(RequestCounter, RequestDuration, handler)(resp, req)
 		}
 	})
 }
@@ -116,7 +139,7 @@ func TestSetHeaders(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/v1/kv/key", nil)
-	s.Server.wrap(handler)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, handler)(resp, req)
 	header := resp.Header().Get("foo")
 
 	if header != "bar" {
@@ -136,7 +159,7 @@ func TestContentTypeIsJSON(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/v1/kv/key", nil)
-	s.Server.wrap(handler)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, handler)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -178,7 +201,7 @@ func testPrettyPrint(pretty string, prettyFmt bool, t *testing.T) {
 
 	urlStr := "/v1/kv/key?" + pretty
 	req, _ := http.NewRequest("GET", urlStr, nil)
-	s.Server.wrap(handler)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, handler)(resp, req)
 
 	var expected bytes.Buffer
 	if prettyFmt {

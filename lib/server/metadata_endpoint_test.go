@@ -2,14 +2,35 @@ package server
 
 import (
 	"bytes"
+	"github.com/ugorji/go/codec"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/ugorji/go/codec"
 )
 
+/*var (
+	RequestDuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "latest_openebs_volume_request_duration_seconds",
+			Help:    "Request response time of the /latest/volumes.",
+			Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, .5, 1, 2.5, 5, 10},
+		},
+		// code is http code and method is http method returned by
+		// endpoint "/latest/volumes"
+		[]string{"code", "method"},
+	)
+	// latestOpenEBSVolumeRequestCounter Count the no of request Since a
+	// request has been made on /latest/volumes
+	RequestCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "latest_openebs_volume_requests_total",
+			Help: "Total number of /latest/volumes requests.",
+		},
+		[]string{"code", "method"},
+	)
+)
+*/
 func TestInvalidReqMetaData(t *testing.T) {
 	s := makeHTTPTestServer(t, nil)
 	defer s.Cleanup()
@@ -133,7 +154,7 @@ func TestInvalidReqPathMetaViaWrap1(t *testing.T) {
 	// passing the respective arguments i.e. `resp` & `req`.
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -177,9 +198,10 @@ func TestInvalidReqPathMetaViaWrap2(t *testing.T) {
 	// The handler i.e. `s.Server.MetaSpecificRequest` is curried via `wrap`
 	// function & returned. The returned func is immediately invoked by
 	// passing the respective arguments i.e. `resp` & `req`.
+
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -223,7 +245,7 @@ func TestMetaAvailZoneViaWrap(t *testing.T) {
 	// passing the respective arguments i.e. `resp` & `req`.
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -272,7 +294,7 @@ func TestInvalidReqMetaAvailZoneViaWrap(t *testing.T) {
 	// passing the respective arguments i.e. `resp` & `req`.
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -316,7 +338,7 @@ func TestMetaInstanceIDViaWrap(t *testing.T) {
 	// passing the respective arguments i.e. `resp` & `req`.
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
@@ -365,7 +387,7 @@ func TestInvalidReqMetaInstanceIDViaWrap(t *testing.T) {
 	// passing the respective arguments i.e. `resp` & `req`.
 	// Learn more by understanding -
 	// `Immediately Invoked Function Expression (IIFE)`.
-	s.Server.wrap(s.Server.MetaSpecificRequest)(resp, req)
+	s.Server.wrap(RequestCounter, RequestDuration, s.Server.MetaSpecificRequest)(resp, req)
 
 	contentType := resp.Header().Get("Content-Type")
 
